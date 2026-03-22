@@ -1,40 +1,79 @@
-import React, { useState, useEffect } from 'react';
-import questionsData from '../data/question.json';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from './Header';
 import Loader from './Loader';
 import { useNavigate } from 'react-router-dom';
-import ReactPaginate from 'react-paginate';
 
-const TOPICS    = ["Array","Tree","Linked Lists","DP","Greedy","Graphs","Strings","Maths","Two Pointers","Combinatorics","Hash Table","Binary Search"];
-const COMPANIES = ["Microsoft","Goldman Sachs","Placewit","Twilio","Morgan Stanley","Uber","Expedia","IBM","Estee Advisory","Atlassian","LinkedIn"];
-const DIFF_COLORS = { Easy: { text: "#4ade80", bg: "rgba(74,222,128,0.1)", border: "rgba(74,222,128,0.2)" }, Medium: { text: "#fbbf24", bg: "rgba(251,191,36,0.1)", border: "rgba(251,191,36,0.2)" }, Hard: { text: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.2)" } };
+const API = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+const DIFF_COLORS = {
+  Easy:   { text: "#4ade80", bg: "rgba(74,222,128,0.1)",   border: "rgba(74,222,128,0.2)"   },
+  Medium: { text: "#fbbf24", bg: "rgba(251,191,36,0.1)",   border: "rgba(251,191,36,0.2)"   },
+  Hard:   { text: "#f87171", bg: "rgba(248,113,113,0.1)",  border: "rgba(248,113,113,0.2)"  },
+};
 
 const PER_PAGE = 10;
 
 export default function Questions_page() {
+  const [questions,  setQuestions]  = useState([]);
+  const [total,      setTotal]      = useState(0);
+  const [topics,     setTopics]     = useState([]);
+  const [companies,  setCompanies]  = useState([]);
   const [difficulty, setDifficulty] = useState('');
   const [topic,      setTopic]      = useState('');
   const [company,    setCompany]    = useState('');
   const [search,     setSearch]     = useState('');
   const [page,       setPage]       = useState(0);
   const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
   const [sideOpen,   setSideOpen]   = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 1000); return () => clearTimeout(t); }, []);
+  // Fetch filter options once
+  useEffect(() => {
+    fetch(`${API}/api/questions/meta`)
+      .then(r => r.json())
+      .then(data => {
+        setTopics(data.topics || []);
+        setCompanies(data.companies || []);
+      })
+      .catch(() => {});
+  }, []);
 
-  const filtered = questionsData.filter(q =>
-    (!difficulty || q.difficulty === difficulty) &&
-    (!topic      || q.topics.includes(topic))    &&
-    (!company    || q.company === company)        &&
-    (!search     || q.name.toLowerCase().includes(search.toLowerCase()))
-  );
+  const fetchQuestions = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const pageCount = Math.ceil(filtered.length / PER_PAGE);
-  const current   = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+      const params = new URLSearchParams({
+        page:  page + 1,
+        limit: PER_PAGE,
+      });
+      if (difficulty) params.append('difficulty', difficulty);
+      if (topic)      params.append('topic', topic);
+      if (company)    params.append('company', company);
+      if (search)     params.append('search', search);
+
+      const res  = await fetch(`${API}/api/questions?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch questions');
+      const data = await res.json();
+
+      setQuestions(data.questions || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [difficulty, topic, company, search, page]);
+
+  useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
+
+  const pageCount     = Math.ceil(total / PER_PAGE);
   const activeFilters = [difficulty, topic, company].filter(Boolean).length;
 
-  const clearAll = () => { setDifficulty(''); setTopic(''); setCompany(''); setSearch(''); setPage(0); };
+  const clearAll = () => {
+    setDifficulty(''); setTopic(''); setCompany(''); setSearch(''); setPage(0);
+  };
 
   return (
     <div style={{ background: "#080B0F", minHeight: "100vh", position: "relative", overflowX: "hidden" }}>
@@ -57,11 +96,11 @@ export default function Questions_page() {
         .q-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;color:#fff;letter-spacing:-.01em;transition:color .22s;}
         .geo-bg{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.16;}
         .sidebar{width:240px;flex-shrink:0;}
-        .main-area{flex:1;min-width:0;}
         .layout{display:flex;gap:20px;align-items:flex-start;}
-        .mobile-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.92);backdrop-filter:blur(10px);display:flex;align-items:flex-start;justify-content:flex-start;}
+        .mobile-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.92);backdrop-filter:blur(10px);display:flex;}
         .page-btn{padding:7px 13px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);color:#8C8C8C;font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .18s;}
         .page-btn:hover,.page-btn.active-page{background:var(--ab);border-color:var(--abr);color:var(--a);}
+        .page-btn:disabled{opacity:.4;cursor:not-allowed;}
         @media(max-width:860px){.sidebar{display:none}.layout{flex-direction:column}}
         ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(32,201,151,0.2);border-radius:4px}
       `}</style>
@@ -84,9 +123,16 @@ export default function Questions_page() {
       <div style={{ position: "relative", zIndex: 1 }}>
         <Header />
 
-        {loading ? (
+        {loading && questions.length === 0 ? (
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "calc(100vh - 64px)" }}>
             <Loader />
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: "center", padding: "80px 20px" }}>
+            <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+            <h3 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: 20, color: "#fff", marginBottom: 8 }}>Failed to load questions</h3>
+            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#8C8C8C", marginBottom: 20 }}>{error}</p>
+            <button onClick={fetchQuestions} style={{ padding: "9px 20px", background: "rgba(32,201,151,0.1)", border: "1px solid rgba(32,201,151,0.25)", borderRadius: 8, color: "#20c997", fontFamily: "'DM Sans',sans-serif", fontSize: 13, cursor: "pointer" }}>Try Again</button>
           </div>
         ) : (
           <main style={{ maxWidth: 1200, margin: "0 auto", padding: "36px clamp(14px,4vw,44px) 80px" }}>
@@ -100,34 +146,33 @@ export default function Questions_page() {
                     OA{" "}
                     <span style={{ background: "linear-gradient(to right,#007BFF,#20c997)", WebkitBackgroundClip: "text", color: "transparent" }}>Question Bank</span>
                   </h1>
-                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#8C8C8C" }}>{filtered.length} questions · {questionsData.length} total</p>
+                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#8C8C8C" }}>{total} questions total</p>
                 </div>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  {activeFilters > 0 && (
-                    <button onClick={clearAll} style={{ padding: "9px 16px", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, color: "#f87171", fontFamily: "'DM Sans',sans-serif", fontSize: 13, cursor: "pointer" }}>
-                      Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
-                    </button>
-                  )}
-                  {/* Mobile filter button */}
-                  <button onClick={() => setSideOpen(true)} style={{ display: "none", padding: "9px 16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 8, color: "#8C8C8C", fontFamily: "'DM Sans',sans-serif", fontSize: 13, cursor: "pointer" }}
-                    className="mobile-filter-btn">
-                    ⚙ Filters {activeFilters > 0 ? `(${activeFilters})` : ""}
+                {activeFilters > 0 && (
+                  <button onClick={clearAll} style={{ padding: "9px 16px", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, color: "#f87171", fontFamily: "'DM Sans',sans-serif", fontSize: 13, cursor: "pointer" }}>
+                    Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
                   </button>
-                </div>
+                )}
               </div>
 
               {/* Search */}
               <div style={{ position: "relative", marginTop: 20 }}>
                 <svg style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#6A6A6A" }} width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input className="search-inp" placeholder="Search questions..." value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
-                {search && <button onClick={() => setSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6A6A6A", cursor: "pointer", fontSize: 16 }}>✕</button>}
+                <input className="search-inp" placeholder="Search questions..." value={search}
+                  onChange={e => { setSearch(e.target.value); setPage(0); }} />
+                {search && <button onClick={() => { setSearch(''); setPage(0); }} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6A6A6A", cursor: "pointer", fontSize: 16 }}>✕</button>}
               </div>
             </div>
 
             <div className="layout">
               {/* Sidebar */}
               <div className="sidebar">
-                <FilterPanel difficulty={difficulty} setDifficulty={v => { setDifficulty(v); setPage(0); }} topic={topic} setTopic={v => { setTopic(v); setPage(0); }} company={company} setCompany={v => { setCompany(v); setPage(0); }} />
+                <FilterPanel
+                  difficulty={difficulty} setDifficulty={v => { setDifficulty(v); setPage(0); }}
+                  topic={topic}           setTopic={v => { setTopic(v); setPage(0); }}
+                  company={company}       setCompany={v => { setCompany(v); setPage(0); }}
+                  topics={topics}         companies={companies}
+                />
               </div>
 
               {/* Mobile overlay */}
@@ -138,38 +183,42 @@ export default function Questions_page() {
                       <span className="pill">Filters</span>
                       <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "#8C8C8C", cursor: "pointer", fontSize: 18 }}>✕</button>
                     </div>
-                    <FilterPanel difficulty={difficulty} setDifficulty={v => { setDifficulty(v); setPage(0); }} topic={topic} setTopic={v => { setTopic(v); setPage(0); }} company={company} setCompany={v => { setCompany(v); setPage(0); }} />
+                    <FilterPanel
+                      difficulty={difficulty} setDifficulty={v => { setDifficulty(v); setPage(0); }}
+                      topic={topic}           setTopic={v => { setTopic(v); setPage(0); }}
+                      company={company}       setCompany={v => { setCompany(v); setPage(0); }}
+                      topics={topics}         companies={companies}
+                    />
                   </div>
                 </div>
               )}
 
-              {/* Questions */}
-              <div className="main-area">
-                {current.length === 0 ? (
+              {/* Questions list */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {questions.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "60px 20px", background: "#0e1218", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16 }}>
                     <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
                     <h3 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: 20, color: "#fff", marginBottom: 8 }}>No questions found</h3>
-                    <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#8C8C8C", marginBottom: 20 }}>Try adjusting your filters or search term</p>
+                    <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#8C8C8C", marginBottom: 20 }}>Try adjusting your filters</p>
                     <button onClick={clearAll} style={{ padding: "9px 20px", background: "rgba(32,201,151,0.1)", border: "1px solid rgba(32,201,151,0.25)", borderRadius: 8, color: "#20c997", fontFamily: "'DM Sans',sans-serif", fontSize: 13, cursor: "pointer" }}>Clear all filters</button>
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {current.map((q, i) => {
+                    {questions.map((q, i) => {
                       const dc = DIFF_COLORS[q.difficulty] || DIFF_COLORS.Medium;
                       return (
-                        <div key={q.id} className="q-card" style={{ animationDelay: `${i * 0.03}s`, animation: "fadeUp .45s ease both" }} onClick={() => navigate(`/upsolve/${q.id}`)}>
+                        <div key={q._id || q.id} className="q-card"
+                          style={{ animationDelay: `${i * 0.03}s`, animation: "fadeUp .45s ease both" }}
+                          onClick={() => navigate(`/upsolve/${q._id || q.id}`)}>
                           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
                             <span className="q-title">{q.name}</span>
                             <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: dc.text, background: dc.bg, border: `1px solid ${dc.border}`, borderRadius: 5, padding: "3px 9px", flexShrink: 0, letterSpacing: ".08em" }}>{q.difficulty}</span>
                           </div>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                            {/* Topics */}
                             {q.topics?.slice(0,3).map(t => (
                               <span key={t} style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "#60a5fa", background: "rgba(0,123,255,0.08)", border: "1px solid rgba(0,123,255,0.15)", borderRadius: 4, padding: "2px 8px", letterSpacing: ".08em" }}>{t}</span>
                             ))}
-                            {/* Company */}
-                            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "#c084fc", background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.18)", borderRadius: 4, padding: "2px 8px", marginLeft: "auto", letterSpacing: ".08em" }}>🏢 {q.company}</span>
-                            {/* Rating */}
+                            {q.company && <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "#c084fc", background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.18)", borderRadius: 4, padding: "2px 8px", marginLeft: "auto", letterSpacing: ".08em" }}>🏢 {q.company}</span>}
                             {q.rating && <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "#20c997", letterSpacing: ".08em" }}>★ {q.rating}</span>}
                           </div>
                         </div>
@@ -179,13 +228,13 @@ export default function Questions_page() {
                     {/* Pagination */}
                     {pageCount > 1 && (
                       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 24, flexWrap: "wrap" }}>
-                        <button className="page-btn" onClick={() => setPage(p => Math.max(0, p-1))} disabled={page === 0} style={{ opacity: page === 0 ? .4 : 1 }}>← Prev</button>
+                        <button className="page-btn" onClick={() => setPage(p => Math.max(0, p-1))} disabled={page === 0}>← Prev</button>
                         {Array.from({ length: Math.min(pageCount, 7) }, (_, i) => {
-                          const pg = pageCount <= 7 ? i : (page < 4 ? i : page - 3 + i);
+                          const pg = pageCount <= 7 ? i : Math.max(0, page - 3) + i;
                           if (pg >= pageCount) return null;
                           return <button key={pg} className={`page-btn ${pg === page ? "active-page" : ""}`} onClick={() => setPage(pg)}>{pg + 1}</button>;
                         })}
-                        <button className="page-btn" onClick={() => setPage(p => Math.min(pageCount-1, p+1))} disabled={page === pageCount-1} style={{ opacity: page === pageCount-1 ? .4 : 1 }}>Next →</button>
+                        <button className="page-btn" onClick={() => setPage(p => Math.min(pageCount-1, p+1))} disabled={page === pageCount-1}>Next →</button>
                       </div>
                     )}
                   </div>
@@ -208,7 +257,7 @@ export default function Questions_page() {
   );
 }
 
-function FilterPanel({ difficulty, setDifficulty, topic, setTopic, company, setCompany }) {
+function FilterPanel({ difficulty, setDifficulty, topic, setTopic, company, setCompany, topics, companies }) {
   const Section = ({ title, children }) => (
     <div style={{ marginBottom: 24 }}>
       <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "#6A6A6A", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 10 }}>{title}</div>
@@ -232,18 +281,14 @@ function FilterPanel({ difficulty, setDifficulty, topic, setTopic, company, setC
       </Section>
 
       <Section title="Topic">
-        {TOPICS.map(t => (
-          <button key={t} className={`filter-btn ${topic === t ? 'active' : ''}`} onClick={() => setTopic(topic === t ? '' : t)}>
-            {t}
-          </button>
+        {topics.map(t => (
+          <button key={t} className={`filter-btn ${topic === t ? 'active' : ''}`} onClick={() => setTopic(topic === t ? '' : t)}>{t}</button>
         ))}
       </Section>
 
       <Section title="Company">
-        {COMPANIES.map(c => (
-          <button key={c} className={`filter-btn ${company === c ? 'active' : ''}`} onClick={() => setCompany(company === c ? '' : c)}>
-            {c}
-          </button>
+        {companies.map(c => (
+          <button key={c} className={`filter-btn ${company === c ? 'active' : ''}`} onClick={() => setCompany(company === c ? '' : c)}>{c}</button>
         ))}
       </Section>
     </div>

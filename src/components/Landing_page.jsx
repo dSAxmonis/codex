@@ -353,10 +353,10 @@ function HomeFooter() {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Landing_page() {
   const { user } = useUser();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showLB, setShowLB] = useState(false);
 
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 1100); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(() => setLoading(false), 0); return () => clearTimeout(t); }, []);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';

@@ -11,7 +11,7 @@ function Intern_home() {
   const [total, setTotal]         = useState(0);
   const [search, setSearch]       = useState("");
   const [catFilter, setCatFilter] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState(null);
   const { isSignedIn }            = useUser();
   const navigate                  = useNavigate();

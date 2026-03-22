@@ -4,7 +4,7 @@
  * Import: import api from '../utils/api';
  */
 
-const BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const BASE = process.env.REACT_APP_API_URL || 'https://codex-backend-psi.vercel.app';
 
 // ── Core fetch wrapper ────────────────────────────────────────────────────────
 async function request(path, options = {}, token = null) {

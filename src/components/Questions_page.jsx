@@ -23,7 +23,7 @@ export default function Questions_page() {
   const [company,    setCompany]    = useState('');
   const [search,     setSearch]     = useState('');
   const [page,       setPage]       = useState(0);
-  const [loading,    setLoading]    = useState(true);
+  const [loading, setLoading]       = useState(false);
   const [error,      setError]      = useState(null);
   const [sideOpen,   setSideOpen]   = useState(false);
   const navigate = useNavigate();
@@ -209,7 +209,7 @@ export default function Questions_page() {
                       return (
                         <div key={q._id || q.id} className="q-card"
                           style={{ animationDelay: `${i * 0.03}s`, animation: "fadeUp .45s ease both" }}
-                          onClick={() => navigate(`/upsolve/${q._id || q.id}`)}>
+                         onClick={() => navigate(`/upsolve/${q.legacyId || q.id}`)}>
                           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
                             <span className="q-title">{q.name}</span>
                             <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: dc.text, background: dc.bg, border: `1px solid ${dc.border}`, borderRadius: 5, padding: "3px 9px", flexShrink: 0, letterSpacing: ".08em" }}>{q.difficulty}</span>

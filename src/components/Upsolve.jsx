@@ -47,7 +47,9 @@ const mocktc = [
 const Upsolve = () => {
   const { id } = useParams();
   const { getToken } = useAuth();
-  const selectedQuestion = questions.find((q) => q.id === parseInt(id));
+  const selectedQuestion = questions.find((q) => 
+  q.id === parseInt(id) || String(q.id) === id
+);
 
   const [code, setCode] = useState(boilerplate.cpp);
   const [testCases, setTestCases] = useState(selectedQuestion?.testCases);

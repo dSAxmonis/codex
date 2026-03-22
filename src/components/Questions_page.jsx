@@ -1,338 +1,296 @@
-
-import React, { useState, useEffect } from 'react';
-import { Search, Code2, Filter, Brain, Building2, Target, Clock, Zap, Sparkles, X } from 'lucide-react';
-import questionsData from '../data/question.json';
-import Header from  "./Header";
-import Footer from './Footer';
-import Loader1 from './Loader1';
+import React, { useState, useEffect, useCallback } from 'react';
+import Header from './Header';
 import Loader from './Loader';
-import {useNavigate} from 'react-router-dom';
-import CustomSearchComponent from '../Utils/CustomSearchComponent';
-import ReactPaginate from "react-paginate";
+import { useNavigate } from 'react-router-dom';
 
+const API = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-const topics = ["Array", "Tree", "Linked Lists", "DP","Greedy", "Graphs", "Strings", "Maths", "Two Pointers", "Combinatorics","Hash Table","Binary Search"];
-const companies = ["Microsoft", "Goldman Sachs", "Placewit", "Twilio", "Morgan Stanley","Uber","Expedia","IBM","Estee Advisory","Atlassian","LinkedIn"];
+const DIFF_COLORS = {
+  Easy:   { text: "#4ade80", bg: "rgba(74,222,128,0.1)",   border: "rgba(74,222,128,0.2)"   },
+  Medium: { text: "#fbbf24", bg: "rgba(251,191,36,0.1)",   border: "rgba(251,191,36,0.2)"   },
+  Hard:   { text: "#f87171", bg: "rgba(248,113,113,0.1)",  border: "rgba(248,113,113,0.2)"  },
+};
 
-function Questions_page() {
-  const [selectedDifficulty, setSelectedDifficulty] = useState('');
-  const [selectedTopic, setSelectedTopic] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoading1,setIsLoading1] = useState(false);
+const PER_PAGE = 10;
+
+export default function Questions_page() {
+  const [questions,  setQuestions]  = useState([]);
+  const [total,      setTotal]      = useState(0);
+  const [topics,     setTopics]     = useState([]);
+  const [companies,  setCompanies]  = useState([]);
+  const [difficulty, setDifficulty] = useState('');
+  const [topic,      setTopic]      = useState('');
+  const [company,    setCompany]    = useState('');
+  const [search,     setSearch]     = useState('');
+  const [page,       setPage]       = useState(0);
+  const [loading, setLoading]       = useState(false);
+  const [error,      setError]      = useState(null);
+  const [sideOpen,   setSideOpen]   = useState(false);
   const navigate = useNavigate();
 
-
-
+  // Fetch filter options once
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false); // Set loading to false after data "loads"
-    }, 1000); // Simulated delay (1.5 seconds)
-
-    return () => clearTimeout(timer); // Cleanup the timer
+    fetch(`${API}/api/questions/meta`)
+      .then(r => r.json())
+      .then(data => {
+        setTopics(data.topics || []);
+        setCompanies(data.companies || []);
+      })
+      .catch(() => {});
   }, []);
 
+  const fetchQuestions = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      setMousePosition({
-        x: (e.clientX / window.innerWidth) * 100,
-        y: (e.clientY / window.innerHeight) * 100,
+      const params = new URLSearchParams({
+        page:  page + 1,
+        limit: PER_PAGE,
       });
-    }; 
+      if (difficulty) params.append('difficulty', difficulty);
+      if (topic)      params.append('topic', topic);
+      if (company)    params.append('company', company);
+      if (search)     params.append('search', search);
 
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+      const res  = await fetch(`${API}/api/questions?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch questions');
+      const data = await res.json();
 
-    const filteredQuestions = questionsData.filter(q => {
-    const matchesDifficulty = !selectedDifficulty || q.difficulty === selectedDifficulty;
-    const matchesTopic = !selectedTopic || q.topics.includes(selectedTopic);
-    const matchesCompany = !selectedCompany || q.company === selectedCompany;
-    const matchesSearch = !searchQuery || q.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesDifficulty && matchesTopic && matchesCompany && matchesSearch;
-  });
+      setQuestions(data.questions || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [difficulty, topic, company, search, page]);
 
-  const handleQuestionClick = (questionId) => {
-    navigate(`/upsolve/${questionId}`);
+  useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
+
+  const pageCount     = Math.ceil(total / PER_PAGE);
+  const activeFilters = [difficulty, topic, company].filter(Boolean).length;
+
+  const clearAll = () => {
+    setDifficulty(''); setTopic(''); setCompany(''); setSearch(''); setPage(0);
   };
-
-
-  const questionsPerPage = 10;
-  const [currentPage, setCurrentPage] = useState(0);
-
-  const handlePageClick = (event) => {
-    setCurrentPage(event.selected);
-  };
-
-
-  const offset = currentPage * questionsPerPage;
-  const currentQuestions = filteredQuestions.slice(
-    offset,
-    offset + questionsPerPage
-  );
-
 
   return (
-    <>
-    <Header />
-    <div className="min-h-screen relative overflow-hidden bg-[#0a192f]">
-        {/* Loader Section */}
-        {isLoading ? (
-          <div className="flex justify-center items-center h-screen">
-            <Loader /> {/* Display loader when isLoading is true */}
+    <div style={{ background: "#080B0F", minHeight: "100vh", position: "relative", overflowX: "hidden" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..60,700;12..60,800&family=DM+Sans:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap');
+        :root{--a:#20c997;--ab:rgba(32,201,151,0.09);--abr:rgba(32,201,151,0.2);--bd:rgba(255,255,255,0.07);--s:#0e1218;}
+        *{box-sizing:border-box;margin:0;padding:0;}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .pill{display:inline-flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:9px;color:var(--a);background:var(--ab);border:1px solid var(--abr);border-radius:100px;padding:4px 12px;letter-spacing:.13em;text-transform:uppercase;}
+        .search-inp{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:12px 14px 12px 42px;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:all .22s;}
+        .search-inp::placeholder{color:#6A6A6A;}
+        .search-inp:focus{border-color:var(--abr);box-shadow:0 0 0 3px rgba(32,201,151,0.08);}
+        .filter-btn{width:100%;display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.03);color:#8C8C8C;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .18s;text-align:left;}
+        .filter-btn:hover,.filter-btn.active{background:var(--ab);border-color:var(--abr);color:var(--a);}
+        .q-card{background:var(--s);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:18px 20px;cursor:pointer;transition:all .22s;position:relative;overflow:hidden;}
+        .q-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#007BFF,#20c997);transform:scaleX(0);transform-origin:left;transition:transform .22s;}
+        .q-card:hover{border-color:rgba(32,201,151,0.22);transform:translateY(-2px);box-shadow:0 16px 32px rgba(0,0,0,0.35);}
+        .q-card:hover::before{transform:scaleX(1);}
+        .q-card:hover .q-title{color:#20c997;}
+        .q-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;color:#fff;letter-spacing:-.01em;transition:color .22s;}
+        .geo-bg{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.16;}
+        .sidebar{width:240px;flex-shrink:0;}
+        .layout{display:flex;gap:20px;align-items:flex-start;}
+        .mobile-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.92);backdrop-filter:blur(10px);display:flex;}
+        .page-btn{padding:7px 13px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);color:#8C8C8C;font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .18s;}
+        .page-btn:hover,.page-btn.active-page{background:var(--ab);border-color:var(--abr);color:var(--a);}
+        .page-btn:disabled{opacity:.4;cursor:not-allowed;}
+        @media(max-width:860px){.sidebar{display:none}.layout{flex-direction:column}}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(32,201,151,0.2);border-radius:4px}
+      `}</style>
+
+      {/* Geometry bg */}
+      <svg className="geo-bg" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="qg1" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#20c997" stopOpacity=".18"/><stop offset="100%" stopColor="#20c997" stopOpacity="0"/></radialGradient>
+          <radialGradient id="qg2" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#007BFF" stopOpacity=".14"/><stop offset="100%" stopColor="#007BFF" stopOpacity="0"/></radialGradient>
+        </defs>
+        <ellipse cx="85%" cy="15%" rx="280" ry="220" fill="url(#qg1)"/>
+        <ellipse cx="10%" cy="80%" rx="260" ry="200" fill="url(#qg2)"/>
+        {Array.from({length:16}).map((_,i)=><line key={`h${i}`} x1="0" y1={`${(i+1)*6}%`} x2="100%" y2={`${(i+1)*6}%`} stroke="rgba(255,255,255,0.025)" strokeWidth="1"/>)}
+        {Array.from({length:20}).map((_,i)=><line key={`v${i}`} x1={`${(i+1)*5}%`} y1="0" x2={`${(i+1)*5}%`} y2="100%" stroke="rgba(255,255,255,0.025)" strokeWidth="1"/>)}
+        <line x1="0" y1="100%" x2="30%" y2="0" stroke="rgba(32,201,151,0.04)" strokeWidth="1.5"/>
+        <circle cx="88%" cy="88%" r="65" fill="none" stroke="rgba(0,123,255,0.07)" strokeWidth="1.5"/>
+        <polygon points="100%,0 calc(100% - 90px),0 100%,90px" fill="rgba(32,201,151,0.04)"/>
+      </svg>
+
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <Header />
+
+        {loading && questions.length === 0 ? (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "calc(100vh - 64px)" }}>
+            <Loader />
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: "center", padding: "80px 20px" }}>
+            <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+            <h3 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: 20, color: "#fff", marginBottom: 8 }}>Failed to load questions</h3>
+            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#8C8C8C", marginBottom: 20 }}>{error}</p>
+            <button onClick={fetchQuestions} style={{ padding: "9px 20px", background: "rgba(32,201,151,0.1)", border: "1px solid rgba(32,201,151,0.25)", borderRadius: 8, color: "#20c997", fontFamily: "'DM Sans',sans-serif", fontSize: 13, cursor: "pointer" }}>Try Again</button>
           </div>
         ) : (
-          <>  
-      {/* Dynamic Background */}
-      <div 
-        className="absolute inset-0 overflow-hidden"
-        style={{
-          background: `radial-gradient(circle at ${mousePosition.x}% ${mousePosition.y}%, rgba(45, 212, 191, 0.15) 0%, rgba(45, 212, 191, 0) 50%)`
-        }}
-      >
-        <div className="absolute w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjE4IDAgNi4xNzUtLjgyNCA4Ljc3MS0yLjI3MSAyLjU5Ni0xLjQ0NyA0Ljc4OS0zLjQ0IDYuMjI5LTUuODI5IiBzdHJva2U9InJnYmEoNDUsIDIxMiwgMTkxLCAwLjEpIiBzdHJva2Utd2lkdGg9IjIiLz48L2c+PC9zdmc+')] opacity-5"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0a192f]/80"></div>
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full mix-blend-screen filter blur-xl opacity-70 animate-pulse"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: `${Math.random() * 300 + 50}px`,
-              height: `${Math.random() * 300 + 50}px`,
-              background: `radial-gradient(circle, rgba(45, 212, 191, 0.1) 0%, rgba(45, 212, 191, 0) 70%)`,
-              animation: `pulse ${Math.random() * 3 + 2}s infinite`,
-              animationDelay: `${Math.random() * 2}s`
-            }}
-          />
-        ))}
-      </div>
+          <main style={{ maxWidth: 1200, margin: "0 auto", padding: "36px clamp(14px,4vw,44px) 80px" }}>
 
-      <div className="relative max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 md:mb-12">
-          <div>
-            <h1 className="text-3xl md:text-5xl font-bold text-white flex items-center gap-3 mb-2">
-              <Code2 className="w-8 h-8 md:w-12 md:h-12 text-teal-400" />
-              CrackIT
-            </h1>
-            <p className="text-gray-400">Master algorithms, one problem at a time</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 md:flex-none">
-              <input
-                type="text"
-                placeholder="Search questions..."
-                className="w-full md:w-72 px-4 py-3 pl-12 bg-gray-800/50 backdrop-blur-lg border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Search className="absolute left-4 top-3.5 text-gray-400 w-5 h-5" />
-              {/* <CustomSearchComponent /> */}
-            </div>
-            <button
-              onClick={() => setIsFiltersOpen(true)}
-              className="md:hidden px-4 py-3 bg-gray-800/50 backdrop-blur-lg border border-gray-700 rounded-xl text-white"
-            >
-              <Filter className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          {/* Filters */}
-          <div className="md:col-span-3">
-            <div className={`${isFiltersOpen ? 'block' : 'hidden'} md:block fixed md:relative top-0 left-0 w-full md:w-auto h-full md:h-auto z-50 bg-[#0a192f] md:bg-transparent overflow-auto md:overflow-visible p-4 md:p-0`}>
-              <div className="bg-gray-800/50 backdrop-blur-lg p-6 rounded-xl border border-gray-700/50">
-                <div className="flex items-center justify-between mb-4 mt-8 lg:mt-0">
-                  <h3 className="text-white font-semibold flex items-center gap-2">
-                    <Filter className="w-5 h-5 text-teal-400" /> Filters
-                  </h3>
-                  <button
-                    onClick={() => setIsFiltersOpen(false)}
-                    className="md:hidden text-gray-400 hover:text-white transition-colors mt-16px"
-                  >
-                    <X className="w-5 h-5 " />
-                  </button>
-                </div>
-
-                <div className="mb-8">
-                  <h4 className="text-gray-400 text-sm mb-3">Difficulty Level</h4>
-                  <div className="space-y-3">
-                    {['Easy', 'Medium', 'Hard'].map((difficulty) => (
-                      <button
-                        key={difficulty}
-                        onClick={() => setSelectedDifficulty(difficulty === selectedDifficulty ? '' : difficulty)}
-                        className={`w-full px-4 py-2 rounded-lg flex items-center justify-between transition-all ${
-                          selectedDifficulty === difficulty
-                            ? difficulty === 'Easy' 
-                              ? 'bg-green-500/20 text-green-400 border-green-500/50'
-                              : difficulty === 'Medium'
-                              ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
-                              : 'bg-red-500/20 text-red-400 border-red-500/50'
-                            : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700/50'
-                        } border`}
-                      >
-                        {difficulty}
-                        <Target className="w-4 h-4" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8">
-                  <h4 className="text-gray-400 text-sm mb-3">Topics</h4>
-                  <div className="space-y-2">
-                    {topics.map((topic) => (
-                      <button
-                        key={topic}
-                        onClick={() => setSelectedTopic(topic === selectedTopic ? '' : topic)}
-                        className={`w-full px-4 py-2 rounded-lg flex items-center justify-between transition-all ${
-                          selectedTopic === topic
-                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                            : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700/50'
-                        } border`}
-                      >
-                        {topic}
-                        <Brain className="w-4 h-4" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
+            {/* Page header */}
+            <div style={{ marginBottom: 28, animation: "fadeUp .5s ease both" }}>
+              <span className="pill" style={{ marginBottom: 12, display: "inline-flex" }}>⚡ IntelliCode</span>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
                 <div>
-                  <h4 className="text-gray-400 text-sm mb-3">Companies</h4>
-                  <div className="space-y-2">
-                    {companies.map((company) => (
-                      <button
-                        key={company}
-                        onClick={() => setSelectedCompany(company === selectedCompany ? '' : company)}
-                        className={`w-full px-4 py-2 rounded-lg flex items-center justify-between transition-all ${
-                          selectedCompany === company
-                            ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
-                            : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700/50'
-                        } border`}
-                      >
-                        {company}
-                        <Building2 className="w-4 h-4" />
-                      </button>
-                    ))}
-                  </div>
+                  <h1 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: "clamp(24px,4vw,38px)", color: "#fff", letterSpacing: "-.03em", marginBottom: 6 }}>
+                    OA{" "}
+                    <span style={{ background: "linear-gradient(to right,#007BFF,#20c997)", WebkitBackgroundClip: "text", color: "transparent" }}>Question Bank</span>
+                  </h1>
+                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#8C8C8C" }}>{total} questions total</p>
                 </div>
+                {activeFilters > 0 && (
+                  <button onClick={clearAll} style={{ padding: "9px 16px", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, color: "#f87171", fontFamily: "'DM Sans',sans-serif", fontSize: 13, cursor: "pointer" }}>
+                    Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
+                  </button>
+                )}
+              </div>
+
+              {/* Search */}
+              <div style={{ position: "relative", marginTop: 20 }}>
+                <svg style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#6A6A6A" }} width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input className="search-inp" placeholder="Search questions..." value={search}
+                  onChange={e => { setSearch(e.target.value); setPage(0); }} />
+                {search && <button onClick={() => { setSearch(''); setPage(0); }} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6A6A6A", cursor: "pointer", fontSize: 16 }}>✕</button>}
               </div>
             </div>
-          </div>
 
-          {/* Questions List */}
-          <div className="md:col-span-9">
-          {isLoading ? (
-                // Loader component is displayed when loading
-                <div className="flex justify-center items-center py-12">
-                  <Loader1 />
-                </div>
-              ) : (
-            <div className="space-y-4">
-              {currentQuestions.length > 0 ? (
-                currentQuestions.map((question) => (
-                  <button
-                    key={question.id}
-                    onClick={() => handleQuestionClick(question.id)}
-                    className="w-full text-left bg-gray-800/50 backdrop-blur-lg rounded-xl p-4 md:p-6 border border-gray-700/50 transform hover:scale-[1.01] transition-all duration-300 hover:shadow-xl hover:shadow-teal-400/10 group"
-                  >
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-2 md:items-center mb-4">
-                      <h3 className="text-lg md:text-xl font-semibold text-white group-hover:text-teal-400 transition-colors">
-                        {question.name}
-                      </h3>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        question.difficulty === 'Easy'
-                          ? 'bg-green-500/20 text-green-400'
-                          : question.difficulty === 'Medium'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'bg-red-500/20 text-red-400'
-                      }`}>
-                        {question.difficulty}
-                      </span>
+            <div className="layout">
+              {/* Sidebar */}
+              <div className="sidebar">
+                <FilterPanel
+                  difficulty={difficulty} setDifficulty={v => { setDifficulty(v); setPage(0); }}
+                  topic={topic}           setTopic={v => { setTopic(v); setPage(0); }}
+                  company={company}       setCompany={v => { setCompany(v); setPage(0); }}
+                  topics={topics}         companies={companies}
+                />
+              </div>
+
+              {/* Mobile overlay */}
+              {sideOpen && (
+                <div className="mobile-overlay" onClick={() => setSideOpen(false)}>
+                  <div style={{ background: "#0e1218", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "0 16px 16px 0", padding: 20, width: 280, height: "100vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                      <span className="pill">Filters</span>
+                      <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "#8C8C8C", cursor: "pointer", fontSize: 18 }}>✕</button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 mb-4">
-  
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <Brain className="w-4 h-4" />
-                        <span>{question.topics.join(', ')}</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                      <div className="flex items-center gap-2 w-full md:w-auto">
-                        <Building2 className="w-4 h-4 text-purple-400 shrink-0" />
-                        <div className="flex flex-wrap gap-2">
-                            <span
-                              className="px-2 py-1 rounded-md text-xs font-medium bg-purple-500/10 text-purple-400"
-                            >
-                              {question.company}
-                            </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-teal-400" />
-                        <span className="text-teal-400">{question.rating}</span>
-                      </div>
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <div className="bg-gray-800/50 backdrop-blur-lg rounded-xl p-8 border border-gray-700/50">
-                    <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-white mb-2">No questions found</h3>
-                    <p className="text-gray-400">
-                      {searchQuery 
-                        ? `No results found for "${searchQuery}"`
-                        : 'No questions match the selected filters'}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setSearchQuery('');
-                        setSelectedDifficulty('');
-                        setSelectedTopic('');
-                        setSelectedCompany('');
-                      }}
-                      className="mt-4 px-4 py-2 bg-teal-400/20 text-teal-400 rounded-lg hover:bg-teal-400/30 transition-colors"
-                    >
-                      Clear all filters
-                    </button>
+                    <FilterPanel
+                      difficulty={difficulty} setDifficulty={v => { setDifficulty(v); setPage(0); }}
+                      topic={topic}           setTopic={v => { setTopic(v); setPage(0); }}
+                      company={company}       setCompany={v => { setCompany(v); setPage(0); }}
+                      topics={topics}         companies={companies}
+                    />
                   </div>
                 </div>
               )}
-              <ReactPaginate
-            previousLabel={"Previous"}
-            nextLabel={"Next"}
-            breakLabel={"..."}
-            pageCount={Math.ceil(filteredQuestions.length / questionsPerPage)}
-            marginPagesDisplayed={2}
-            pageRangeDisplayed={5}
-            onPageChange={handlePageClick}
-            containerClassName="flex justify-center items-center mt-4 space-x-2"
-            pageClassName="px-4 py-2 rounded-lg bg-gray-700 text-white cursor-pointer hover:bg-teal-500"
-            previousClassName="px-4 py-2 rounded-lg bg-gray-700 text-white cursor-pointer hover:bg-teal-500"
-            nextClassName="px-4 py-2 rounded-lg bg-gray-700 text-white cursor-pointer hover:bg-teal-500"
-            disabledClassName="opacity-50 cursor-not-allowed"
-            activeClassName="bg-teal-500 text-white"
-          />
+
+              {/* Questions list */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {questions.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "60px 20px", background: "#0e1218", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16 }}>
+                    <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
+                    <h3 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: 20, color: "#fff", marginBottom: 8 }}>No questions found</h3>
+                    <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#8C8C8C", marginBottom: 20 }}>Try adjusting your filters</p>
+                    <button onClick={clearAll} style={{ padding: "9px 20px", background: "rgba(32,201,151,0.1)", border: "1px solid rgba(32,201,151,0.25)", borderRadius: 8, color: "#20c997", fontFamily: "'DM Sans',sans-serif", fontSize: 13, cursor: "pointer" }}>Clear all filters</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {questions.map((q, i) => {
+                      const dc = DIFF_COLORS[q.difficulty] || DIFF_COLORS.Medium;
+                      return (
+                        <div key={q._id || q.id} className="q-card"
+                          style={{ animationDelay: `${i * 0.03}s`, animation: "fadeUp .45s ease both" }}
+                         onClick={() => navigate(`/upsolve/${q.legacyId || q.id}`)}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+                            <span className="q-title">{q.name}</span>
+                            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: dc.text, background: dc.bg, border: `1px solid ${dc.border}`, borderRadius: 5, padding: "3px 9px", flexShrink: 0, letterSpacing: ".08em" }}>{q.difficulty}</span>
+                          </div>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            {q.topics?.slice(0,3).map(t => (
+                              <span key={t} style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "#60a5fa", background: "rgba(0,123,255,0.08)", border: "1px solid rgba(0,123,255,0.15)", borderRadius: 4, padding: "2px 8px", letterSpacing: ".08em" }}>{t}</span>
+                            ))}
+                            {q.company && <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "#c084fc", background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.18)", borderRadius: 4, padding: "2px 8px", marginLeft: "auto", letterSpacing: ".08em" }}>🏢 {q.company}</span>}
+                            {q.rating && <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "#20c997", letterSpacing: ".08em" }}>★ {q.rating}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Pagination */}
+                    {pageCount > 1 && (
+                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 24, flexWrap: "wrap" }}>
+                        <button className="page-btn" onClick={() => setPage(p => Math.max(0, p-1))} disabled={page === 0}>← Prev</button>
+                        {Array.from({ length: Math.min(pageCount, 7) }, (_, i) => {
+                          const pg = pageCount <= 7 ? i : Math.max(0, page - 3) + i;
+                          if (pg >= pageCount) return null;
+                          return <button key={pg} className={`page-btn ${pg === page ? "active-page" : ""}`} onClick={() => setPage(pg)}>{pg + 1}</button>;
+                        })}
+                        <button className="page-btn" onClick={() => setPage(p => Math.min(pageCount-1, p+1))} disabled={page === pageCount-1}>Next →</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-              )}
-          </div>
-        </div>
-      </div>
-      </>
+          </main>
         )}
+
+        {/* Footer */}
+        <footer style={{ background: "#080808", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "28px clamp(14px,4vw,44px)" }}>
+          <div style={{ height: 1, background: "linear-gradient(90deg,transparent,#20c997,#007BFF,transparent)", opacity: .4, marginBottom: 20 }} />
+          <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#6A6A6A" }}>© {new Date().getFullYear()} Codify · IntelliCode</span>
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#6A6A6A", fontStyle: "italic" }}>"Master algorithms, one problem at a time"</span>
+          </div>
+        </footer>
+      </div>
     </div>
-    <Footer/>
-    </>
   );
 }
 
-export default Questions_page;
+function FilterPanel({ difficulty, setDifficulty, topic, setTopic, company, setCompany, topics, companies }) {
+  const Section = ({ title, children }) => (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "#6A6A6A", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 10 }}>{title}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>{children}</div>
+    </div>
+  );
+
+  return (
+    <div style={{ background: "#0e1218", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "18px 16px", position: "sticky", top: 84 }}>
+      <div style={{ marginBottom: 20 }}>
+        <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#20c997", letterSpacing: ".14em", textTransform: "uppercase" }}>⚙ Filters</span>
+      </div>
+
+      <Section title="Difficulty">
+        {['Easy','Medium','Hard'].map(d => (
+          <button key={d} className={`filter-btn ${difficulty === d ? 'active' : ''}`} onClick={() => setDifficulty(difficulty === d ? '' : d)}>
+            <span>{d}</span>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: d === 'Easy' ? '#4ade80' : d === 'Medium' ? '#fbbf24' : '#f87171', flexShrink: 0 }} />
+          </button>
+        ))}
+      </Section>
+
+      <Section title="Topic">
+        {topics.map(t => (
+          <button key={t} className={`filter-btn ${topic === t ? 'active' : ''}`} onClick={() => setTopic(topic === t ? '' : t)}>{t}</button>
+        ))}
+      </Section>
+
+      <Section title="Company">
+        {companies.map(c => (
+          <button key={c} className={`filter-btn ${company === c ? 'active' : ''}`} onClick={() => setCompany(company === c ? '' : c)}>{c}</button>
+        ))}
+      </Section>
+    </div>
+  );
+}

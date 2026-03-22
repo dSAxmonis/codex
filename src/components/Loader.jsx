@@ -4,109 +4,90 @@ import styled from 'styled-components';
 const Loader = () => {
   return (
     <StyledWrapper>
-      <div className="card">
-        <div className="loader">
-          <p>Loading</p>
-          <div className="words">
-            <span className="word">Questions..</span>
-            <span className="word">Data..</span>
-            <span className="word">Animations..</span>
-            <span className="word">Results..</span>
-          </div>
-        </div>
+      <div className="three-body">
+        <div className="three-body__dot" />
+        <div className="three-body__dot" />
+        <div className="three-body__dot" />
       </div>
     </StyledWrapper>
   );
 }
 
 const StyledWrapper = styled.div`
-  .card {
-    /* color used to softly clip top and bottom of the .words container */
-    --bg-color: #212121;
-    background-color: var(--bg-color);
-    padding: 1rem 2rem;
-    border-radius: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .three-body {
+   --uib-size: 55px;
+   --uib-speed: 0.8s;
+   --uib-color: #20c997;
+   position: relative;
+   display: inline-block;
+   height: var(--uib-size);
+   width: var(--uib-size);
+   animation: spin78236 calc(var(--uib-speed) * 2.5) infinite linear;
   }
-  .loader {
-    color: rgb(124, 124, 124);
-    font-family: "Poppins", sans-serif;
-    font-weight: 500;
-    font-size: 25px;
-    -webkit-box-sizing: content-box;
-    box-sizing: content-box;
-    height: 40px;
-    padding: 10px 10px;
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: flex;
-    border-radius: 8px;
+  .three-body__dot {
+   position: absolute;
+   height: 100%;
+   width: 30%;
   }
-
-  .words {
-    overflow: hidden;
-    position: relative;
+  .three-body__dot:after {
+   content: '';
+   position: absolute;
+   height: 0%;
+   width: 100%;
+   padding-bottom: 100%;
+   background-color: var(--uib-color);
+   border-radius: 50%;
   }
-  .words::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      var(--bg-color) 10%,
-      transparent 30%,
-      transparent 70%,
-      var(--bg-color) 90%
-    );
-    z-index: 20;
+  .three-body__dot:nth-child(1) {
+   bottom: 5%;
+   left: 0;
+   transform: rotate(60deg);
+   transform-origin: 50% 85%;
   }
-
-  .word {
-    display: block;
-    height: 100%;
-    padding-left: 6px;
-    color: #20c997;
-    animation: spin_4991 4s infinite;
+  .three-body__dot:nth-child(1)::after {
+   bottom: 0;
+   left: 0;
+   animation: wobble1 var(--uib-speed) infinite ease-in-out;
+   animation-delay: calc(var(--uib-speed) * -0.3);
   }
-
-  @keyframes spin_4991 {
-    10% {
-      -webkit-transform: translateY(-102%);
-      transform: translateY(-102%);
-    }
-
-    25% {
-      -webkit-transform: translateY(-100%);
-      transform: translateY(-100%);
-    }
-
-    35% {
-      -webkit-transform: translateY(-202%);
-      transform: translateY(-202%);
-    }
-
-    50% {
-      -webkit-transform: translateY(-200%);
-      transform: translateY(-200%);
-    }
-
-    60% {
-      -webkit-transform: translateY(-302%);
-      transform: translateY(-302%);
-    }
-
-    75% {
-      -webkit-transform: translateY(-300%);
-      transform: translateY(-300%);
-    }
-
-    85% {
-      -webkit-transform: translateY(-402%);
-      transform: translateY(-402%);
-    }
-
-    100% {
-      -webkit-transform: translateY(-400%);
-      transform: translateY(-400%);
-    }
-  }`;
+  .three-body__dot:nth-child(2) {
+   bottom: 5%;
+   right: 0;
+   transform: rotate(-60deg);
+   transform-origin: 50% 85%;
+  }
+  .three-body__dot:nth-child(2)::after {
+   bottom: 0;
+   left: 0;
+   animation: wobble1 var(--uib-speed) infinite
+      calc(var(--uib-speed) * -0.15) ease-in-out;
+  }
+  .three-body__dot:nth-child(3) {
+   bottom: -5%;
+   left: 0;
+   transform: translateX(116.666%);
+  }
+  .three-body__dot:nth-child(3)::after {
+   top: 0;
+   left: 0;
+   animation: wobble2 var(--uib-speed) infinite ease-in-out;
+  }
+  @keyframes spin78236 {
+   0% { transform: rotate(0deg); }
+   100% { transform: rotate(360deg); }
+  }
+  @keyframes wobble1 {
+   0%, 100% { transform: translateY(0%) scale(1); opacity: 1; }
+   50% { transform: translateY(-66%) scale(0.65); opacity: 0.8; }
+  }
+  @keyframes wobble2 {
+   0%, 100% { transform: translateY(0%) scale(1); opacity: 1; }
+   50% { transform: translateY(66%) scale(0.65); opacity: 0.8; }
+  }
+`;
 
 export default Loader;

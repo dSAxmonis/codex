@@ -1,0 +1,125 @@
+npm verbose cli /opt/homebrew/Cellar/node/25.8.1_1/bin/node /opt/homebrew/bin/npm
+npm info using npm@11.11.0
+npm info using node@v25.8.1
+npm verbose title npm install
+npm verbose argv "install" "--loglevel" "verbose"
+npm verbose logfile logs-max:10 dir:/Users/monis/.npm/_logs/2026-04-17T07_02_53_621Z-
+npm verbose logfile /Users/monis/.npm/_logs/2026-04-17T07_02_53_621Z-debug-0.log
+npm http cache https://registry.npmjs.org/@clerk%2fclerk-react 25ms (cache hit)
+npm http cache https://registry.npmjs.org/react 11ms (cache hit)
+npm http cache https://registry.npmjs.org/react-dom 15ms (cache hit)
+npm http cache https://registry.npmjs.org/@emotion%2freact 17ms (cache hit)
+npm http cache https://registry.npmjs.org/@emotion%2fstyled 10ms (cache hit)
+npm http cache https://registry.npmjs.org/@formspree%2freact 2ms (cache hit)
+npm http cache https://registry.npmjs.org/@monaco-editor%2freact 4ms (cache hit)
+npm http cache https://registry.npmjs.org/monaco-editor 14ms (cache hit)
+npm http cache https://registry.npmjs.org/@mui%2ficons-material 19ms (cache hit)
+npm http cache https://registry.npmjs.org/@mui%2fmaterial 6ms (cache hit)
+npm http cache https://registry.npmjs.org/@types%2freact 6ms (cache hit)
+npm http cache https://registry.npmjs.org/@mui%2fstyles 6ms (cache hit)
+npm http cache https://registry.npmjs.org/@testing-library%2fjest-dom 2ms (cache hit)
+npm http cache https://registry.npmjs.org/@testing-library%2freact 4ms (cache hit)
+npm http cache https://registry.npmjs.org/@testing-library%2fuser-event 4ms (cache hit)
+npm http cache https://registry.npmjs.org/@testing-library%2fdom 3ms (cache hit)
+npm http cache https://registry.npmjs.org/@tsparticles%2fengine 1ms (cache hit)
+npm http cache https://registry.npmjs.org/@vercel%2fanalytics 2ms (cache hit)
+npm http cache https://registry.npmjs.org/@remix-run%2freact 7ms (cache hit)
+npm http cache https://registry.npmjs.org/typescript 20ms (cache hit)
+npm http cache https://registry.npmjs.org/@sveltejs%2fkit 10ms (cache hit)
+npm http cache https://registry.npmjs.org/@opentelemetry%2fapi 11ms (cache hit)
+npm http cache https://registry.npmjs.org/@sveltejs%2fvite-plugin-svelte 2ms (cache hit)
+npm http cache https://registry.npmjs.org/svelte 9ms (cache hit)
+npm http cache https://registry.npmjs.org/vite 60ms (cache hit)
+npm http cache https://registry.npmjs.org/@types%2fnode 20ms (cache hit)
+npm http cache https://registry.npmjs.org/@vitejs%2fdevtools 3ms (cache hit)
+npm http cache https://registry.npmjs.org/esbuild 12ms (cache hit)
+npm http cache https://registry.npmjs.org/jiti 6ms (cache hit)
+npm http cache https://registry.npmjs.org/less 3ms (cache hit)
+npm http cache https://registry.npmjs.org/sass 2ms (cache hit)
+npm http cache https://registry.npmjs.org/sass-embedded 2ms (cache hit)
+npm http cache https://registry.npmjs.org/stylus 1ms (cache hit)
+npm http cache https://registry.npmjs.org/sugarss 1ms (cache hit)
+npm http cache https://registry.npmjs.org/postcss 2ms (cache hit)
+npm http cache https://registry.npmjs.org/terser 2ms (cache hit)
+npm http cache https://registry.npmjs.org/tsx 2ms (cache hit)
+npm http cache https://registry.npmjs.org/yaml 3ms (cache hit)
+npm http cache https://registry.npmjs.org/next 38ms (cache hit)
+npm http cache https://registry.npmjs.org/@playwright%2ftest 16ms (cache hit)
+npm http cache https://registry.npmjs.org/babel-plugin-react-compiler 3ms (cache hit)
+npm http cache https://registry.npmjs.org/vue 4ms (cache hit)
+npm http cache https://registry.npmjs.org/vue-router 4ms (cache hit)
+npm http cache https://registry.npmjs.org/@vercel%2fspeed-insights 2ms (cache hit)
+npm http cache https://registry.npmjs.org/typescript 12ms (cache hit)
+npm http cache https://registry.npmjs.org/animated-backgrounds 2ms (cache hit)
+npm http cache https://registry.npmjs.org/bootstrap-icons 2ms (cache hit)
+npm http cache https://registry.npmjs.org/lucide-react 4ms (cache hit)
+npm http cache https://registry.npmjs.org/react-awesome-reveal 1ms (cache hit)
+npm http cache https://registry.npmjs.org/react-monaco-editor 2ms (cache hit)
+npm http cache https://registry.npmjs.org/@types%2freact 3ms (cache hit)
+npm http cache https://registry.npmjs.org/monaco-editor 4ms (cache hit)
+npm http cache https://registry.npmjs.org/react-paginate 1ms (cache hit)
+npm http cache https://registry.npmjs.org/react-router-dom 6ms (cache hit)
+npm http cache https://registry.npmjs.org/react-scripts 2ms (cache hit)
+npm http cache https://registry.npmjs.org/react-scroll 1ms (cache hit)
+npm http cache https://registry.npmjs.org/react-tsparticles 3ms (cache hit)
+npm http cache https://registry.npmjs.org/socket.io-client 6ms (cache hit)
+npm http cache https://registry.npmjs.org/styled-components 4ms (cache hit)
+npm http cache https://registry.npmjs.org/react-native 20ms (cache hit)
+npm http cache https://registry.npmjs.org/@react-native%2fjest-preset 3ms (cache hit)
+npm http cache https://registry.npmjs.org/react 6ms (cache hit)
+npm http cache https://registry.npmjs.org/@types%2freact 3ms (cache hit)
+npm http cache https://registry.npmjs.org/tsparticles 3ms (cache hit)
+npm http cache https://registry.npmjs.org/web-vitals 2ms (cache hit)
+npm http cache https://registry.npmjs.org/tailwindcss 17ms (cache hit)
+npm verbose stack Error: could not resolve
+npm verbose stack     at PlaceDep.failPeerConflict (/opt/homebrew/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/place-dep.js:503:25)
+npm verbose stack     at new PlaceDep (/opt/homebrew/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/place-dep.js:157:21)
+npm verbose stack     at #buildDepStep (/opt/homebrew/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:933:18)
+npm verbose stack     at async Arborist.buildIdealTree (/opt/homebrew/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:170:7)
+npm verbose stack     at async Promise.all (index 1)
+npm verbose stack     at async Arborist.reify (/opt/homebrew/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:110:5)
+npm verbose stack     at async Install.exec (/opt/homebrew/lib/node_modules/npm/lib/commands/install.js:152:5)
+npm verbose stack     at async Npm.exec (/opt/homebrew/lib/node_modules/npm/lib/npm.js:209:9)
+npm verbose stack     at async module.exports (/opt/homebrew/lib/node_modules/npm/lib/cli/entry.js:67:5)
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: blog@0.1.0
+npm error Found: @types/react@18.3.28
+npm error node_modules/@types/react
+npm error   peerOptional @types/react@"^17.0.0 || ^18.0.0 || ^19.0.0" from @mui/icons-material@5.18.0
+npm error   node_modules/@mui/icons-material
+npm error     @mui/icons-material@"^5.16.7" from the root project
+npm error   peerOptional @types/react@"^17.0.0 || ^18.0.0 || ^19.0.0" from @mui/material@5.18.0
+npm error   node_modules/@mui/material
+npm error     @mui/material@"^5.16.7" from the root project
+npm error     peer @mui/material@"^5.0.0" from @mui/icons-material@5.18.0
+npm error     node_modules/@mui/icons-material
+npm error       @mui/icons-material@"^5.16.7" from the root project
+npm error   2 more (@mui/styles, react-monaco-editor)
+npm error
+npm error Could not resolve dependency:
+npm error styled-components@"^6.1.13" from the root project
+npm error
+npm error Conflicting peer dependency: @types/react@19.2.14
+npm error node_modules/@types/react
+npm error   peerOptional @types/react@"^19.1.1" from react-native@0.85.1
+npm error   node_modules/react-native
+npm error     peerOptional react-native@">= 0.68.0" from styled-components@6.4.0
+npm error     node_modules/styled-components
+npm error       styled-components@"^6.1.13" from the root project
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error /Users/monis/.npm/_logs/2026-04-17T07_02_53_621Z-eresolve-report.txt
+npm verbose cwd /Users/monis/Downloads/codify3 2/codex
+npm verbose os Darwin 24.4.0
+npm verbose node v25.8.1
+npm verbose npm  v11.11.0
+npm verbose exit 1
+npm verbose code 1
+npm error A complete log of this run can be found in: /Users/monis/.npm/_logs/2026-04-17T07_02_53_621Z-debug-0.log

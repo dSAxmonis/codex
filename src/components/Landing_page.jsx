@@ -309,7 +309,7 @@ function HomeFooter() {
           <div>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:'#20c997', letterSpacing:'.16em', textTransform:'uppercase', marginBottom:16 }}>Platform</div>
             <ul style={{ listStyle:'none', display:'flex', flexDirection:'column', gap:10 }}>
-              {[['Home','/home'],['PataKaro','/patakaro'],['IntelliCode','/intellicode'],['FTE','/fte']].map(([l,to])=>(
+              {[['Home','/home'],['PataKaro','/patakaro'],['IntelliCode','/intellicode'],['CodeCast','/codecast']].map(([l,to])=>(
                 <li key={l}>
                   <RouterLink to={to} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:'#6A6A6A', textDecoration:'none', transition:'color .2s' }}
                     onMouseEnter={e=>e.currentTarget.style.color='#20c997'}
@@ -556,7 +556,7 @@ export default function Landing_page() {
                     {[
                       { label:'PataKaro',   sub:'Company OA Archives',   icon:'📁', to:'/patakaro',    color:'#20c997' },
                       { label:'IntelliCode',sub:'AI Coding Practice',     icon:'⚡', to:'/intellicode',  color:'#007BFF' },
-                      { label:'FTE Prep',   sub:'Full-Time Role Prep',    icon:'🎯', to:'/fte',          color:'#f59e0b' },
+                      { label:'CodeCast',   sub:'Live 1v1 Battle Mode',   icon:'⚔️', to:'/codecast',     color:'#f59e0b' },
                     ].map((l,i)=>(
                       <RouterLink key={i} to={l.to}
                         style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, textDecoration:'none', transition:'all .22s' }}

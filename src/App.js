@@ -11,6 +11,7 @@ import SignUpPage from "./components/SignUpPage";
 import Questions_page from "./components/Questions_page";
 import Upsolve from "./components/Upsolve";
 import User_profile from "./components/User_profile";
+import CodeCast from "./components/CodeCast";
 import useAuthSync from "./Hooks/useAuthSync";
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
         <Route path="/fte"         element={<SignedIn><Fte_home /></SignedIn>} />
         <Route path="/intellicode" element={<SignedIn><Questions_page /></SignedIn>} />
         <Route path="/upsolve/:id" element={<SignedIn><Upsolve /></SignedIn>} />
+        <Route path="/codecast" element={<SignedIn><CodeCast /></SignedIn>} />
         <Route path="/questions"   element={<Questions_page />} />
 
         {/* Catch all */}

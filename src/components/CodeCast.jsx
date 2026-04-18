@@ -83,13 +83,16 @@ export default function CodeCast() {
   const socketRef = useRef(null);
 
   const connectSocket = useCallback(() => {
-    if (socketRef.current?.connected) return;
-    socketRef.current = io(`${WS}/codecast`, {
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-    });
+    return new Promise((resolve, reject) => {
+      if (socketRef.current?.connected) return resolve(socketRef.current);
+      socketRef.current = io(`${WS}/codecast`, {
+        transports: ['polling', 'websocket'],
+        reconnectionAttempts: 5,
+      });
 
-    const s = socketRef.current;
+      const s = socketRef.current;
+      s.once('connect', () => resolve(s));
+      s.once('connect_error', (err) => reject(err));
 
     s.on('room-joined', ({ role: r, room }) => {
       setRole(r);
@@ -137,7 +140,8 @@ export default function CodeCast() {
       addChat('🤖 System', 'Opponent disconnected');
     });
 
-    s.on('error', ({ message: m }) => setError(m));
+      s.on('error', ({ message: m }) => setError(m));
+    }); // end Promise
   }, [WS, role]);
 
   function addChat(name, msg) {
@@ -178,25 +182,22 @@ export default function CodeCast() {
     setError('');
     setLoading(true);
     try {
-      const token = await getToken();
-      const payload = { questionId: selectedQ.id, language, userId: user.id };
       const res = await fetch(`${API}/api/codecast/rooms`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: selectedQ.id, language, userId: user.id }),
       });
 
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        throw new Error(`Server error (${res.status}): backend returned HTML instead of JSON`);
+      if (!res.ok) {
+        const txt = await res.text();
+        let msg = `Server error (${res.status})`;
+        try { msg = JSON.parse(txt).error || msg; } catch {}
+        throw new Error(msg);
       }
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Request failed with status ${res.status}`);
-
-      const { roomId: rid } = data;
+      const { roomId: rid } = await res.json();
       setRoomId(rid);
-      connectSocket();
+      await connectSocket();
       socketRef.current.emit('join-room', { roomId: rid, userId: user.id, displayName });
     } catch (e) {
       setError(e.message);
@@ -214,10 +215,15 @@ export default function CodeCast() {
     }
     setError('');
     setLoading(true);
-    connectSocket();
-    socketRef.current.emit('join-room', { roomId: rid, userId: user.id, displayName });
-    setRoomId(rid);
-    setLoading(false);
+    try {
+      await connectSocket();
+      socketRef.current.emit('join-room', { roomId: rid, userId: user.id, displayName });
+      setRoomId(rid);
+    } catch(e) {
+      setError('Could not connect to server. Try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleCodeChange(val) {

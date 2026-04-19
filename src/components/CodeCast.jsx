@@ -70,7 +70,12 @@ export default function CodeCast() {
   const [battleResult, setBattleResult] = useState(null);
 
   // Chat
-  const [chatMessages, setChatMessages] = useState([]);
+  const [chatMessages, setChatMessages] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('cc_chat');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef(null);
 
@@ -146,6 +151,7 @@ export default function CodeCast() {
         sessionStorage.removeItem('cc_userId');
         sessionStorage.removeItem('cc_displayName');
         sessionStorage.removeItem('cc_startedAt');
+        sessionStorage.removeItem('cc_chat');
       });
 
       s.on('chat', ({ displayName: n, message, ts }) => {
@@ -200,6 +206,11 @@ export default function CodeCast() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatMessages.length > 0) {
+      try {
+        sessionStorage.setItem('cc_chat', JSON.stringify(chatMessages.slice(-100)));
+      } catch {}
+    }
   }, [chatMessages]);
 
   useEffect(() => () => {
@@ -236,6 +247,7 @@ export default function CodeCast() {
         sessionStorage.removeItem('cc_userId');
         sessionStorage.removeItem('cc_displayName');
         sessionStorage.removeItem('cc_startedAt');
+        sessionStorage.removeItem('cc_chat');
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

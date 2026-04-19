@@ -81,10 +81,16 @@ const Upsolve = () => {
   const [isLoaded,      setIsLoaded]      = useState(false);
   const [isLOADING,     SetIsLOADING]    = useState(true);
   const [aiEnabled,     setAiEnabled]     = useState(false);
+  const [editorTheme,   setEditorTheme]   = useState('vs-dark');
+  const [fontSize,      setFontSize]      = useState(14);
+  const [leftWidth,     setLeftWidth]     = useState(42);  // percentage
+  const [isDragging,    setIsDragging]    = useState(false);
 
   // ── ALL useRef — before any return ───────────────────────────────────────
-  const editorRef = useRef(null);
-  const monacoRef = useRef(null);
+  const editorRef    = useRef(null);
+  const monacoRef    = useRef(null);
+  const dragRef      = useRef(null);
+  const containerRef = useRef(null);
 
   // ── ALL useEffect — before any return ────────────────────────────────────
   useEffect(() => {
@@ -130,6 +136,25 @@ const Upsolve = () => {
       return next;
     });
   }, [testCases.length]);
+
+  // ── Resizable panel drag handler ────────────────────────────────────────
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.min(Math.max(newWidth, 25), 65));
+    };
+    const handleMouseUp = () => setIsDragging(false);
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   // ── ALL useCallback — before any return ──────────────────────────────────
   const generateAI = useCallback(
@@ -349,286 +374,372 @@ const Upsolve = () => {
   const solutions = selectedQuestion.solution || [];
 
   // ── JSX — unchanged from your original ───────────────────────────────────
+  const editorBg = editorTheme === 'vs-dark' ? '#1e1e1e' : '#ffffff';
+  const panelBg  = editorTheme === 'vs-dark' ? '#0D1117' : '#f8f9fa';
+  const borderC  = editorTheme === 'vs-dark' ? 'rgba(255,255,255,0.08)' : '#e0e0e0';
+  const textC    = editorTheme === 'vs-dark' ? '#ccc' : '#333';
+  const solutions = selectedQuestion.solution || [];
+
   return (
     <>
-      <Header />
-      {isLOADING ? (
-        <div className="flex items-center justify-center h-screen"><Loader2 /></div>
-      ) : (
-        <Box id="main-content" sx={{ p: isMobile ? '8px' : '16px', display: isFocusMode ? 'block' : 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '16px', overflow: 'hidden', minHeight: '100vh' }}>
-          <HowTouseModal />
-          <HowTouseModal1 isModalOpen={isModalOpen} closeModal={() => setIsModalOpen(false)} />
+      <style>{`
+        .upsolve-root { font-family: 'DM Sans', sans-serif; }
+        .upsolve-root * { box-sizing: border-box; }
+        .panel-divider { width: 4px; background: ${borderC}; cursor: col-resize; flex-shrink: 0; transition: background .2s; position: relative; }
+        .panel-divider:hover, .panel-divider.dragging { background: #20c997; }
+        .panel-divider::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 2px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+        .tc-tab { padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; border: none; transition: all .15s; }
+        .tc-tab.active { background: rgba(32,201,151,0.15); color: #20c997; }
+        .tc-tab:not(.active) { background: transparent; color: #6A6A6A; }
+        .tc-tab:not(.active):hover { background: rgba(255,255,255,0.05); color: #ccc; }
+        .run-btn { background: #20c997; color: #000; border: none; border-radius: 8px; padding: 8px 20px; font-weight: 700; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 6px; transition: opacity .2s; }
+        .run-btn:hover { opacity: .85; }
+        .run-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .submit-btn { background: linear-gradient(135deg,#16a34a,#20c997); color: #fff; border: none; border-radius: 8px; padding: 8px 24px; font-weight: 700; cursor: pointer; font-size: 14px; transition: opacity .2s; }
+        .submit-btn:hover { opacity: .85; }
+        .submit-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .toolbar-btn { background: rgba(255,255,255,0.06); border: 1px solid ${borderC}; border-radius: 6px; padding: 5px 10px; color: ${textC}; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+        .toolbar-btn:hover { border-color: #20c997; color: #20c997; }
+        .toolbar-btn.active { border-color: #20c997; color: #20c997; background: rgba(32,201,151,0.1); }
+        .sym-btn { background: rgba(255,255,255,0.05); border: 1px solid ${borderC}; border-radius: 4px; padding: 3px 8px; color: #8C8C8C; cursor: pointer; font-family: 'Space Mono', monospace; font-size: 11px; transition: all .15s; }
+        .sym-btn:hover { border-color: #20c997; color: #20c997; background: rgba(32,201,151,0.08); }
+      `}</style>
 
-          {!isFocusMode && (
-            <Box sx={{ mb: '16px', p: '20px', border: '1px solid #e0e0e0', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', backgroundColor: '#fafafa', flex: 1, maxWidth: isMobile ? '100%' : '48%', maxHeight: '165vh', overflowY: 'auto' }}>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, backgroundImage: 'linear-gradient(to right, #007BFF, #20c997)', backgroundClip: 'text', WebkitBackgroundClip: 'text', color: 'transparent' }}>
-                {selectedQuestion.name}
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-                <Typography variant="body2" sx={{ px: 1.5, py: 0.5, borderRadius: 1, fontWeight: 600, color: selectedQuestion.difficulty === 'Easy' ? '#16a34a' : selectedQuestion.difficulty === 'Hard' ? '#dc2626' : '#d97706', background: selectedQuestion.difficulty === 'Easy' ? '#dcfce7' : selectedQuestion.difficulty === 'Hard' ? '#fee2e2' : '#fef3c7' }}>
-                  {selectedQuestion.difficulty}
-                </Typography>
-                <Typography variant="body2" sx={{ px: 1.5, py: 0.5, borderRadius: 1, background: '#e0f2fe', color: '#0369a1' }}>★ {selectedQuestion.rating}</Typography>
-                {solved && <Typography variant="body2" sx={{ px: 1.5, py: 0.5, borderRadius: 1, background: '#dcfce7', color: '#16a34a', fontWeight: 600 }}>✓ Solved</Typography>}
-              </Box>
-              <Typography variant="body2" sx={{ color: '#555', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <b>Topics:</b>
-                {showTopics ? selectedQuestion.topics?.join(', ') : '••••••'}
-                <IconButton size="small" onClick={() => setShowTopics(!showTopics)} sx={{ color: '#888', p: 0.5 }}>
-                  {showTopics ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
-                </IconButton>
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#555', mb: 2 }}><b>Company:</b> {selectedQuestion.company}</Typography>
-              {[
-                { title: 'Description',          content: selectedQuestion.question_description },
-                { title: 'Function Description', content: selectedQuestion.function_description },
-                { title: 'Input Format',         content: selectedQuestion.input_format },
-                { title: 'Output Format',        content: selectedQuestion.output_format },
-                { title: 'Constraints',          content: selectedQuestion.constraints },
-              ].filter(s => s.content).map((s, i) => (
-                <Box key={i} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#222', mb: 0.5 }}>{s.title}:</Typography>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-line', color: '#555', lineHeight: 1.7 }}>{s.content}</Typography>
-                </Box>
-              ))}
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#222', mb: 1 }}>Examples:</Typography>
-                {selectedQuestion.examples?.map((ex, i) => (
-                  <Box key={i} sx={{ p: 1.5, mb: 1, border: '1px solid #e2e8f0', borderRadius: 2, background: '#fff', fontFamily: 'monospace', fontSize: 13 }}>
-                    <div><b>Input:</b> {ex.input}</div>
-                    <div><b>Output:</b> {ex.output}</div>
-                    {ex.explanation && <div style={{ color: '#666' }}><b>Explanation:</b> {ex.explanation}</div>}
-                  </Box>
-                ))}
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Extra Test Cases</Typography>
-                {extraTestCases.map((tc, i) => (
-                  <Accordion key={i}>
-                    <AccordionSummary expandIcon={isPremium ? <ExpandMore /> : null}>
-                      <Typography>Test Case {i + 1}</Typography>
-                      {!isPremium && (
-                        <div className="ml-8 cursor-pointer" onClick={() => alert('Premium feature — contact us to get access!')}><Premium /></div>
-                      )}
-                      {isPremium && (
-                        <IconButton color={testResults[i] === null ? 'primary' : testResults[i] ? 'success' : 'error'} sx={{ ml: 'auto' }} onClick={e => { e.stopPropagation(); handleRunCode(i, 'extra'); }} disabled={extraLoading}>
-                          {extraLoading ? <CircularProgress size={20} /> : <PlayArrow />}
-                        </IconButton>
-                      )}
-                    </AccordionSummary>
-                    {isPremium && (
-                      <AccordionDetails>
-                        <Typography variant="body2">Input:</Typography>
-                        <TextField fullWidth size="small" value={tc.input} disabled margin="dense" sx={{ fontFamily: 'monospace' }} />
-                        <Typography variant="body2">Expected Output:</Typography>
-                        <TextField fullWidth size="small" value={tc.output} disabled margin="dense" />
-                        <Typography variant="body2">Your Output:</Typography>
-                        <TextField fullWidth size="small" value={tc.tle ? 'TLE' : tc.actualOutput || '—'} disabled margin="dense" />
-                        {tc.actualOutput && (normalise(tc.actualOutput) === normalise(tc.output) ? <CheckCircle sx={{ color: 'green', mt: 1 }} /> : <Cancel sx={{ color: 'red', mt: 1 }} />)}
-                      </AccordionDetails>
-                    )}
-                  </Accordion>
-                ))}
-              </Box>
-            </Box>
-          )}
+      <div className="upsolve-root" style={{ background: editorTheme === 'vs-dark' ? '#080B0F' : '#f0f2f5', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <Header />
+        <HowTouseModal1 isModalOpen={isModalOpen} closeModal={() => setIsModalOpen(false)} />
 
-          <Box sx={{ flex: 2, minWidth: '50%', maxWidth: '100%', overflowX: 'hidden', overflowY: 'auto' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-              {isMobile ? (
-                <IconButton onClick={() => setIsDrawerOpen(true)}><MenuIcon /></IconButton>
-              ) : (
-                <>
-                  <Button variant="contained" size="small" onClick={() => setIsModalOpen(true)}>How to Use</Button>
-                  <button className="custom-button" onClick={handleSaveCode}><span className="button-text">Save Code</span></button>
-                  <Button variant="outlined" size="small" onClick={handleClickOpen} color="secondary">Solution</Button>
-                  <Button variant="outlined" size="small" onClick={() => setIsFocusMode(!isFocusMode)}>{isFocusMode ? 'Exit Focus' : 'Focus Mode'}</Button>
-                </>
-              )}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
-                <Typography variant="caption" sx={{ color: '#666' }}>AI Suggestions</Typography>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={aiEnabled} onChange={() => setAiEnabled(p => !p)} />
-                  <div className="group peer bg-white rounded-full duration-300 w-12 h-6 ring-2 ring-red-500 after:duration-300 after:bg-red-500 peer-checked:after:bg-green-500 peer-checked:ring-green-500 after:rounded-full after:absolute after:h-4 after:w-4 after:top-1 after:left-1 peer-checked:after:translate-x-6 peer-hover:after:scale-95"></div>
-                </label>
-              </Box>
-            </Box>
+        {isLOADING ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 /></div>
+        ) : (
+          <div ref={containerRef} style={{ display: 'flex', flex: 1, height: 'calc(100vh - 64px)', overflow: 'hidden', userSelect: isDragging ? 'none' : 'auto' }}>
 
-            <Drawer anchor="top" open={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
-              <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Button variant="contained" onClick={() => { setIsModalOpen(true); setIsDrawerOpen(false); }}>How to Use</Button>
-                <Button variant="outlined" onClick={() => { setIsFocusMode(!isFocusMode); setIsDrawerOpen(false); }}>{isFocusMode ? 'Exit Focus Mode' : 'Focus Mode'}</Button>
-                <Button variant="outlined" color="secondary" onClick={() => { handleClickOpen(); setIsDrawerOpen(false); }}>View Solution</Button>
-                <button className="custom-button" onClick={() => { handleSaveCode(); setIsDrawerOpen(false); }}><span className="button-text">Save Code</span></button>
-              </Box>
-            </Drawer>
-
-            <Box sx={{ border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', mb: 1 }}>
-              {!isLoaded ? (
-                <Box sx={{ height: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1e1e1e' }}>
-                  <CircularProgress sx={{ color: '#20c997' }} />
-                </Box>
-              ) : (
-                <MonacoEditor height="500px" language={monacoLang[language]} theme="vs-dark" value={code} onChange={handleEditorChangeWithAI} onMount={handleEditorMount} options={{ fontFamily: 'JetBrains Mono, Courier New, monospace', fontSize: 14, minimap: { enabled: false }, scrollBeyondLastLine: false, automaticLayout: true }} />
-              )}
-            </Box>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <Tick />
-              <Typography variant="caption" sx={{ color: '#888' }}>Code auto-saved locally</Typography>
-            </Box>
-
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, background: '#f5f5f5', p: 0.5, borderRadius: 1, mb: 1 }}>
-              {['{}', '()', '[]', 'if', 'else', 'for', 'while', '<int>', 'vector', 'cin', 'cout', '<<', '>>', ';'].map((sym, i) => (
-                <Button key={i} variant="text" size="small" sx={{ minWidth: 36, fontFamily: 'monospace', fontSize: 12, p: '2px 6px' }} onClick={() => insertText(sym)}>{sym}</Button>
-              ))}
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <Select value={language} onChange={handleLanguageChange} size="small" fullWidth>
-                <MenuItem value="cpp">C++</MenuItem>
-                <MenuItem value="python">Python</MenuItem>
-                <MenuItem value="java">Java</MenuItem>
-              </Select>
-            </Box>
-
-            {error && (
-              <Box sx={{ mb: 2, p: 1.5, background: '#fff1f2', border: '1px solid #fecaca', borderRadius: 2 }}>
-                <Typography variant="body2" sx={{ color: '#dc2626', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>{error}</Typography>
-              </Box>
-            )}
-
-            <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <IconButton size="small" color="error" onClick={deleteLastTestCase} sx={{ border: '1px solid #f87171', borderRadius: 1, px: 1 }}>
-                <CloseIcon fontSize="small" />
-                <Typography variant="caption" sx={{ ml: 0.5, color: '#f87171' }}>Delete Last TC</Typography>
-              </IconButton>
-            </Box>
-
-            <Box sx={{ maxWidth: '100%', overflowX: 'auto', mb: 1 }}>
-              <Tabs value={Math.min(activeTestCase, testCases.length - 1)} onChange={(_, v) => setActiveTestCase(v)} variant="scrollable" scrollButtons="auto">
-                {testCases.map((_, i) => (
-                  <Tab key={i} label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      {testResults[i] === true && <CheckCircle sx={{ color: 'green', fontSize: 14 }} />}
-                      {testResults[i] === false && <Cancel sx={{ color: 'red', fontSize: 14 }} />}
-                      {`Case ${i + 1}`}
-                    </Box>
-                  } />
-                ))}
-                <Button size="small" onClick={addTestCase} sx={{ ml: 1, flexShrink: 0 }}><Add /> Add</Button>
-              </Tabs>
-            </Box>
-
-            {testCases[activeTestCase] && (
-              <Box sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2, background: '#f8f9fa', mb: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Input:</Typography>
-                <TextField fullWidth multiline size="small" value={testCases[activeTestCase].input} onChange={e => updateTestCase(activeTestCase, 'input', e.target.value)} sx={{ mb: 1, fontFamily: 'monospace' }} />
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Expected Output:</Typography>
-                <TextField fullWidth size="small" value={testCases[activeTestCase].output || ''} onChange={e => updateTestCase(activeTestCase, 'output', e.target.value)} sx={{ mb: 1 }} />
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Your Output:</Typography>
-                <TextField fullWidth size="small" value={testCases[activeTestCase].tle ? '⏱ Time Limit Exceeded' : (testCases[activeTestCase].actualOutput || '— Run the code to see output')} disabled sx={{ mb: 1.5, '& input': { fontFamily: 'monospace', color: testCases[activeTestCase].tle ? '#d97706' : 'inherit' } }} />
-                {testCases[activeTestCase].actualOutput && !testCases[activeTestCase].tle && (
-                  normalise(testCases[activeTestCase].actualOutput) === normalise(testCases[activeTestCase].output)
-                    ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'green' }}><CheckCircle /><Typography variant="body2" sx={{ fontWeight: 600 }}>Correct!</Typography></Box>
-                    : <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'red' }}><Cancel /><Typography variant="body2" sx={{ fontWeight: 600 }}>Wrong Answer</Typography></Box>
-                )}
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <button onClick={() => handleRunCode(activeTestCase, 'main')} disabled={loading} className="relative border hover:border-sky-600 duration-500 group cursor-pointer text-sky-50 overflow-hidden h-12 w-36 rounded-md bg-sky-800 p-2 flex justify-center items-center font-extrabold">
-                    <div className="absolute z-10 w-48 h-48 rounded-full group-hover:scale-150 transition-all duration-500 ease-in-out bg-sky-900"></div>
-                    <div className="absolute z-10 w-40 h-40 rounded-full group-hover:scale-150 transition-all duration-500 ease-in-out bg-sky-800"></div>
-                    <div className="absolute z-10 w-32 h-32 rounded-full group-hover:scale-150 transition-all duration-500 ease-in-out bg-sky-700"></div>
-                    <div className="absolute z-10 w-16 h-16 rounded-full group-hover:scale-150 transition-all duration-500 ease-in-out bg-sky-500"></div>
-                    <p className="z-10">{loading ? <CircularProgress size={20} color="inherit" /> : '▶ Run'}</p>
+            {/* ── LEFT PANEL: Problem Description ───────────────────────── */}
+            <div style={{ width: `${leftWidth}%`, minWidth: 280, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: panelBg, borderRight: `1px solid ${borderC}` }}>
+              {/* Problem header */}
+              <div style={{ padding: '16px 20px', borderBottom: `1px solid ${borderC}`, flexShrink: 0 }}>
+                <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 18, fontWeight: 800, margin: '0 0 8px', background: 'linear-gradient(to right, #007BFF, #20c997)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  {selectedQuestion.name}
+                </h2>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                    color: selectedQuestion.difficulty === 'Easy' ? '#20c997' : selectedQuestion.difficulty === 'Hard' ? '#ef4444' : '#f59e0b',
+                    background: selectedQuestion.difficulty === 'Easy' ? 'rgba(32,201,151,0.1)' : selectedQuestion.difficulty === 'Hard' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)' }}>
+                    {selectedQuestion.difficulty}
+                  </span>
+                  <span style={{ padding: '2px 10px', borderRadius: 6, fontSize: 12, background: 'rgba(0,123,255,0.1)', color: '#007BFF' }}>★ {selectedQuestion.rating}</span>
+                  {solved && <span style={{ padding: '2px 10px', borderRadius: 6, fontSize: 12, background: 'rgba(32,201,151,0.1)', color: '#20c997', fontWeight: 700 }}>✓ Solved</span>}
+                </div>
+                <div style={{ marginTop: 8, fontSize: 13, color: textC, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#6A6A6A' }}>Topics:</span>
+                  {showTopics ? selectedQuestion.topics?.join(', ') : '••••••'}
+                  <button onClick={() => setShowTopics(!showTopics)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6A6A6A', fontSize: 12, padding: 2 }}>
+                    {showTopics ? '👁' : '🔒'}
                   </button>
-                  <Button variant="contained" color="success" onClick={handleSubmit} disabled={runningAll} sx={{ px: 3, fontWeight: 700, background: 'linear-gradient(135deg,#16a34a,#20c997)' }}>
-                    {runningAll ? <CircularProgress size={20} color="inherit" /> : '🚀 Submit'}
-                  </Button>
-                </Box>
+                </div>
+                <div style={{ fontSize: 13, color: '#6A6A6A', marginTop: 4 }}>
+                  <span style={{ color: '#6A6A6A' }}>Company: </span><span style={{ color: textC }}>{selectedQuestion.company}</span>
+                </div>
+              </div>
+
+              {/* Problem content - scrollable */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+                {[
+                  { title: 'Description',          content: selectedQuestion.question_description },
+                  { title: 'Function Description', content: selectedQuestion.function_description },
+                  { title: 'Input Format',         content: selectedQuestion.input_format },
+                  { title: 'Output Format',        content: selectedQuestion.output_format },
+                  { title: 'Constraints',          content: selectedQuestion.constraints },
+                ].filter(s => s.content).map((s, i) => (
+                  <div key={i} style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#20c997', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>{s.title}</div>
+                    <div style={{ fontSize: 14, color: textC, whiteSpace: 'pre-line', lineHeight: 1.7 }}>{s.content}</div>
+                  </div>
+                ))}
+
+                {selectedQuestion.examples?.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#20c997', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>Examples</div>
+                    {selectedQuestion.examples.map((ex, i) => (
+                      <div key={i} style={{ background: editorTheme === 'vs-dark' ? '#161B22' : '#fff', border: `1px solid ${borderC}`, borderRadius: 8, padding: 12, marginBottom: 8, fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
+                        <div style={{ color: '#6A6A6A', marginBottom: 4 }}><span style={{ color: '#20c997' }}>Input:</span> <span style={{ color: textC }}>{ex.input}</span></div>
+                        <div style={{ color: '#6A6A6A' }}><span style={{ color: '#20c997' }}>Output:</span> <span style={{ color: textC }}>{ex.output}</span></div>
+                        {ex.explanation && <div style={{ color: '#6A6A6A', marginTop: 4, fontSize: 11 }}>{ex.explanation}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Solution button at bottom */}
+              {solutions.length > 0 && (
+                <div style={{ padding: '12px 20px', borderTop: `1px solid ${borderC}`, flexShrink: 0 }}>
+                  <button className="toolbar-btn" style={{ width: '100%', textAlign: 'center', padding: '8px' }} onClick={handleClickOpen}>
+                    💡 View Solution
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ── DIVIDER ────────────────────────────────────────────────── */}
+            <div
+              className={`panel-divider${isDragging ? ' dragging' : ''}`}
+              onMouseDown={() => setIsDragging(true)}
+            />
+
+            {/* ── RIGHT PANEL: Editor + Test Cases ──────────────────────── */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: editorTheme === 'vs-dark' ? '#0D1117' : '#fff' }}>
+
+              {/* Editor Toolbar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderBottom: `1px solid ${borderC}`, flexShrink: 0, flexWrap: 'wrap' }}>
+                {/* Language selector */}
+                <select
+                  value={language}
+                  onChange={handleLanguageChange}
+                  style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${borderC}`, borderRadius: 6, padding: '4px 10px', color: textC, fontSize: 13, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                  <option value="cpp">C++</option>
+                  <option value="python">Python</option>
+                  <option value="java">Java</option>
+                </select>
+
+                {/* Font size */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button className="toolbar-btn" onClick={() => setFontSize(f => Math.max(10, f-1))} style={{ padding: '4px 8px' }}>A-</button>
+                  <span style={{ fontSize: 12, color: textC, minWidth: 24, textAlign: 'center' }}>{fontSize}</span>
+                  <button className="toolbar-btn" onClick={() => setFontSize(f => Math.min(24, f+1))} style={{ padding: '4px 8px' }}>A+</button>
+                </div>
+
+                {/* Theme toggle */}
+                <button
+                  className={`toolbar-btn ${editorTheme === 'vs-dark' ? 'active' : ''}`}
+                  onClick={() => setEditorTheme(t => t === 'vs-dark' ? 'vs-light' : 'vs-dark')}>
+                  {editorTheme === 'vs-dark' ? '🌙 Dark' : '☀️ Light'}
+                </button>
+
+                {/* Focus mode */}
+                <button className="toolbar-btn" onClick={() => setIsFocusMode(f => !f)}>
+                  {isFocusMode ? '⊡ Exit Focus' : '⊞ Focus'}
+                </button>
+
+                {/* How to use */}
+                <button className="toolbar-btn" onClick={() => setIsModalOpen(true)}>? How to Use</button>
+
+                {/* Save code */}
+                <button className="toolbar-btn active" onClick={handleSaveCode} style={{ marginLeft: 'auto' }}>
+                  💾 Save
+                </button>
+
+                {/* AI toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: textC }}>
+                  <span>AI</span>
+                  <div
+                    onClick={() => setAiEnabled(p => !p)}
+                    style={{ width: 36, height: 20, borderRadius: 10, background: aiEnabled ? '#20c997' : '#444', cursor: 'pointer', position: 'relative', transition: 'background .2s' }}>
+                    <div style={{ position: 'absolute', top: 2, left: aiEnabled ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Symbol shortcuts */}
+              <div style={{ display: 'flex', gap: 4, padding: '6px 14px', borderBottom: `1px solid ${borderC}`, flexShrink: 0, flexWrap: 'wrap', background: editorTheme === 'vs-dark' ? '#080B0F' : '#f5f5f5' }}>
+                {['{}', '()', '[]', 'if', 'else', 'for', 'while', '<int>', 'vector', 'cin', 'cout', '<<', '>>', ';'].map((sym, i) => (
+                  <button key={i} className="sym-btn" onClick={() => insertText(sym)}>{sym}</button>
+                ))}
+              </div>
+
+              {/* Monaco Editor */}
+              <div style={{ flex: 1, overflow: 'hidden', minHeight: 200 }}>
+                {!isLoaded ? (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: editorBg }}>
+                    <CircularProgress sx={{ color: '#20c997' }} />
+                  </div>
+                ) : (
+                  <MonacoEditor
+                    height="100%"
+                    language={monacoLang[language]}
+                    theme={editorTheme}
+                    value={code}
+                    onChange={handleEditorChangeWithAI}
+                    onMount={handleEditorMount}
+                    options={{
+                      fontFamily: 'JetBrains Mono, Fira Code, Courier New, monospace',
+                      fontSize: fontSize,
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      lineNumbers: 'on',
+                      renderLineHighlight: 'line',
+                      cursorBlinking: 'smooth',
+                      smoothScrolling: true,
+                      padding: { top: 12 },
+                      folding: true,
+                      wordWrap: 'off',
+                      tabSize: 2,
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Test cases panel */}
+              <div style={{ borderTop: `1px solid ${borderC}`, flexShrink: 0, background: panelBg, maxHeight: 280, overflow: 'auto' }}>
+                {/* TC header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderBottom: `1px solid ${borderC}`, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap' }}>
+                    {testCases.map((_, i) => (
+                      <button
+                        key={i}
+                        className={`tc-tab${activeTestCase === i ? ' active' : ''}`}
+                        onClick={() => setActiveTestCase(i)}>
+                        {testResults[i] === true && '✅ '}
+                        {testResults[i] === false && '❌ '}
+                        Case {i+1}
+                      </button>
+                    ))}
+                    <button className="tc-tab" onClick={addTestCase} style={{ color: '#20c997' }}>+ Add</button>
+                    <button className="tc-tab" onClick={deleteLastTestCase} style={{ color: '#ef4444' }}>✕ Del</button>
+                  </div>
+
+                  {/* Run + Submit */}
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    <button className="run-btn" onClick={() => handleRunCode(activeTestCase, 'main')} disabled={loading}>
+                      {loading ? <CircularProgress size={16} color="inherit" /> : '▶ Run'}
+                    </button>
+                    <button className="submit-btn" onClick={handleSubmit} disabled={runningAll}>
+                      {runningAll ? <CircularProgress size={16} color="inherit" /> : '🚀 Submit'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* TC content */}
+                {testCases[activeTestCase] && (
+                  <div style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    {[
+                      { label: 'Input', value: testCases[activeTestCase].input, editable: true, field: 'input' },
+                      { label: 'Expected Output', value: testCases[activeTestCase].output || '', editable: true, field: 'output' },
+                      { label: 'Your Output', value: testCases[activeTestCase].tle ? '⏱ TLE' : (testCases[activeTestCase].actualOutput || '—'), editable: false, field: null },
+                    ].map((col, ci) => (
+                      <div key={ci}>
+                        <div style={{ fontSize: 11, color: '#6A6A6A', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>{col.label}</div>
+                        <textarea
+                          rows={3}
+                          readOnly={!col.editable}
+                          value={col.value}
+                          onChange={col.editable ? e => updateTestCase(activeTestCase, col.field, e.target.value) : undefined}
+                          style={{
+                            width: '100%', background: editorTheme === 'vs-dark' ? '#161B22' : '#fff',
+                            border: `1px solid ${borderC}`, borderRadius: 6, padding: '6px 8px',
+                            color: col.field === null && testCases[activeTestCase].actualOutput && !testCases[activeTestCase].tle
+                              ? (normalise(testCases[activeTestCase].actualOutput) === normalise(testCases[activeTestCase].output) ? '#20c997' : '#ef4444')
+                              : textC,
+                            fontFamily: "'Space Mono', monospace", fontSize: 12, resize: 'none', outline: 'none',
+                          }}
+                        />
+                        {col.field === null && testCases[activeTestCase].actualOutput && !testCases[activeTestCase].tle && (
+                          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2,
+                            color: normalise(testCases[activeTestCase].actualOutput) === normalise(testCases[activeTestCase].output) ? '#20c997' : '#ef4444' }}>
+                            {normalise(testCases[activeTestCase].actualOutput) === normalise(testCases[activeTestCase].output) ? '✅ Correct' : '❌ Wrong'}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {error && (
+                  <div style={{ margin: '0 14px 12px', padding: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#ef4444', fontFamily: "'Space Mono', monospace", fontSize: 12, whiteSpace: 'pre-wrap' }}>
+                    {error}
+                  </div>
+                )}
+
+                <div style={{ padding: '4px 14px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Tick />
+                  <span style={{ fontSize: 11, color: '#6A6A6A' }}>Code auto-saved locally</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Solution Dialog */}
+        <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth PaperProps={{ style: { background: '#0D1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16 } }}>
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff', fontFamily: "'Bricolage Grotesque', sans-serif" }}>
+            <span>💡 Accepted Solution</span>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <IconButton onClick={() => setSolutionIndex(i => Math.max(0, i-1))} disabled={solutionIndex === 0} sx={{ color: '#fff' }}><ArrowBackIosIcon fontSize="small" /></IconButton>
+              <Typography variant="caption" sx={{ color: '#6A6A6A' }}>{solutionIndex + 1} / {solutions.length}</Typography>
+              <IconButton onClick={() => setSolutionIndex(i => Math.min(solutions.length-1, i+1))} disabled={solutionIndex >= solutions.length-1} sx={{ color: '#fff' }}><ArrowForwardIosIcon fontSize="small" /></IconButton>
+              <Button size="small" variant="outlined" color="error" onClick={handleClose}>Close</Button>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ position: 'relative' }}>
+              <Button size="small" variant="outlined" sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1, color: '#20c997', borderColor: '#20c997' }}
+                onClick={() => { navigator.clipboard.writeText(solutions[solutionIndex] || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                {copied ? '✓ Copied' : 'Copy'}
+              </Button>
+              <Box sx={{ background: '#1e1e1e', borderRadius: 2, p: 2, maxHeight: 420, overflowY: 'auto', fontFamily: 'monospace', fontSize: 13, color: '#d4d4d4', whiteSpace: 'pre-wrap', mt: 1 }}>
+                {solutions[solutionIndex] || 'No solution available.'}
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+              <Button variant="contained" size="small" sx={{ background: 'rgba(32,201,151,0.2)', color: '#20c997' }} onMouseEnter={e => e.target.textContent = selectedQuestion.time_complexity || 'N/A'} onMouseLeave={e => e.target.textContent = 'TC'}>TC</Button>
+              <Button variant="contained" size="small" sx={{ background: 'rgba(0,123,255,0.2)', color: '#007BFF' }} onMouseEnter={e => e.target.textContent = selectedQuestion.space_complexity || 'N/A'} onMouseLeave={e => e.target.textContent = 'SC'}>SC</Button>
+            </Box>
+          </DialogContent>
+        </Dialog>
+
+        {/* Submit Modal */}
+        <Modal open={submitModal} onClose={() => !runningAll && setSubmitModal(false)}>
+          <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '90%', maxWidth: 600, background: '#0D1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, p: 3, maxHeight: '80vh', overflowY: 'auto', boxShadow: 24 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff', fontFamily: "'Bricolage Grotesque', sans-serif" }}>Submission Results</Typography>
+              {!runningAll && <IconButton onClick={() => setSubmitModal(false)} sx={{ color: '#fff' }}><CloseIcon /></IconButton>}
+            </Box>
+            {runningAll && submitResults.length === 0 && (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <CircularProgress sx={{ color: '#20c997' }} />
+                <Typography sx={{ mt: 2, color: '#666' }}>Running test cases...</Typography>
               </Box>
             )}
-          </Box>
-        </Box>
-      )}
-
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Accepted Solution</span>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <IconButton onClick={() => setSolutionIndex(i => Math.max(0, i-1))} disabled={solutionIndex === 0}><ArrowBackIosIcon fontSize="small" /></IconButton>
-            <Typography variant="caption">{solutionIndex + 1} / {solutions.length}</Typography>
-            <IconButton onClick={() => setSolutionIndex(i => Math.min(solutions.length-1, i+1))} disabled={solutionIndex >= solutions.length-1}><ArrowForwardIosIcon fontSize="small" /></IconButton>
-            <Button size="small" variant="outlined" color="error" onClick={handleClose}>Close</Button>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ position: 'relative' }}>
-            <Button size="small" variant="outlined" sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
-              onClick={() => { navigator.clipboard.writeText(solutions[solutionIndex] || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
-              {copied ? '✓ Copied' : 'Copy'}
-            </Button>
-            <Box sx={{ background: '#1e1e1e', borderRadius: 2, p: 2, maxHeight: 400, overflowY: 'auto', fontFamily: 'monospace', fontSize: 13, color: '#d4d4d4', whiteSpace: 'pre-wrap', mt: 1 }}>
-              {solutions[solutionIndex] || 'No solution available.'}
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-            <Button variant="contained" size="small" onMouseEnter={e => e.target.textContent = selectedQuestion.time_complexity || 'N/A'} onMouseLeave={e => e.target.textContent = 'TC'}>TC</Button>
-            <Button variant="contained" color="secondary" size="small" onMouseEnter={e => e.target.textContent = selectedQuestion.space_complexity || 'N/A'} onMouseLeave={e => e.target.textContent = 'SC'}>SC</Button>
-          </Box>
-        </DialogContent>
-      </Dialog>
-
-      <Modal open={submitModal} onClose={() => !runningAll && setSubmitModal(false)}>
-        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '90%', maxWidth: 600, background: '#fff', borderRadius: 3, p: 3, maxHeight: '80vh', overflowY: 'auto', boxShadow: 24 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>Submission Results</Typography>
-            {!runningAll && <IconButton onClick={() => setSubmitModal(false)}><CloseIcon /></IconButton>}
-          </Box>
-          {runningAll && submitResults.length === 0 && (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <CircularProgress sx={{ color: '#20c997' }} />
-              <Typography sx={{ mt: 2, color: '#666' }}>Running test cases...</Typography>
-            </Box>
-          )}
-          {submitResults.length > 0 && (
-            <>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+            {submitResults.length > 0 && (
+              <>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                  {submitResults.map((r, i) => (
+                    <Box key={i} sx={{ px: 2, py: 1, borderRadius: 2, textAlign: 'center', minWidth: 80,
+                      background: r.status === 'AC' ? 'rgba(32,201,151,0.15)' : r.status === 'TLE' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
+                      color: r.status === 'AC' ? '#20c997' : r.status === 'TLE' ? '#f59e0b' : '#ef4444',
+                      fontWeight: 700, fontSize: 13, border: `1px solid ${r.status === 'AC' ? 'rgba(32,201,151,0.3)' : r.status === 'TLE' ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                      <div style={{ fontSize: 11, opacity: .7 }}>Case {i+1}</div><div>{r.status}</div>
+                    </Box>
+                  ))}
+                </Box>
+                <Typography variant="h5" sx={{ textAlign: 'center', color: submitPassed === testCases.length ? '#20c997' : '#ef4444', fontWeight: 800, mb: 2, fontFamily: "'Bricolage Grotesque', sans-serif" }}>
+                  {submitPassed === testCases.length ? '🎉 All Passed!' : `${submitPassed} / ${testCases.length} Passed`}
+                </Typography>
                 {submitResults.map((r, i) => (
-                  <Box key={i} sx={{ px: 2, py: 1, borderRadius: 2, textAlign: 'center', minWidth: 80, background: r.status === 'AC' ? '#dcfce7' : r.status === 'TLE' ? '#fef3c7' : '#fee2e2', color: r.status === 'AC' ? '#16a34a' : r.status === 'TLE' ? '#92400e' : '#dc2626', fontWeight: 700, fontSize: 13 }}>
-                    <div>Case {i+1}</div><div>{r.status}</div>
+                  <Box key={i} sx={{ mb: 1.5, p: 1.5, border: `1px solid ${r.status === 'AC' ? 'rgba(32,201,151,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: 2, background: r.status === 'AC' ? 'rgba(32,201,151,0.05)' : 'rgba(239,68,68,0.05)' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: r.status === 'AC' ? '#20c997' : '#ef4444' }}>Case {i+1}: {r.status}</Typography>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block', color: '#8C8C8C' }}>Input: {r.input}</Typography>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block', color: '#8C8C8C' }}>Expected: {r.expected}</Typography>
+                    {r.status !== 'AC' && <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block', color: '#ef4444' }}>Got: {r.actual}</Typography>}
                   </Box>
                 ))}
-              </Box>
-              <Typography variant="h6" sx={{ textAlign: 'center', color: submitPassed === testCases.length ? '#16a34a' : '#dc2626', fontWeight: 800, mb: 2 }}>
-                {submitPassed === testCases.length ? '🎉 All Passed!' : `${submitPassed} / ${testCases.length} Passed`}
-              </Typography>
-              {runningAll && (
-                <Box sx={{ textAlign: 'center' }}>
-                  <CircularProgress size={20} sx={{ color: '#20c997' }} />
-                  <Typography variant="caption" sx={{ ml: 1, color: '#666' }}>Running remaining cases...</Typography>
-                </Box>
-              )}
-              {submitResults.map((r, i) => (
-                <Box key={i} sx={{ mb: 1.5, p: 1.5, border: `1px solid ${r.status === 'AC' ? '#86efac' : '#fca5a5'}`, borderRadius: 2, background: r.status === 'AC' ? '#f0fdf4' : '#fff1f2' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 700, color: r.status === 'AC' ? '#16a34a' : '#dc2626' }}>Case {i+1}: {r.status}</Typography>
-                  <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block', color: '#555' }}>Input: {r.input}</Typography>
-                  <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block', color: '#555' }}>Expected: {r.expected}</Typography>
-                  {r.status !== 'AC' && <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block', color: '#dc2626' }}>Got: {r.actual}</Typography>}
-                </Box>
-              ))}
-              {solved && submitPassed === testCases.length && (
-                <Box sx={{ textAlign: 'center', mt: 2, p: 2, background: '#f0fdf4', borderRadius: 2, border: '1px solid #86efac' }}>
-                  <Typography sx={{ color: '#16a34a', fontWeight: 700 }}>✓ Marked as Solved in your profile!</Typography>
-                </Box>
-              )}
-            </>
-          )}
-        </Box>
-      </Modal>
+                {solved && submitPassed === testCases.length && (
+                  <Box sx={{ textAlign: 'center', mt: 2, p: 2, background: 'rgba(32,201,151,0.1)', borderRadius: 2, border: '1px solid rgba(32,201,151,0.3)' }}>
+                    <Typography sx={{ color: '#20c997', fontWeight: 700 }}>✓ Marked as Solved in your profile!</Typography>
+                  </Box>
+                )}
+              </>
+            )}
+          </Box>
+        </Modal>
 
-      <Footer />
+        <Footer />
+      </div>
     </>
   );
 };
+
+
 
 export default Upsolve;

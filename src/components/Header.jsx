@@ -27,6 +27,7 @@ function Header() {
     { label: "PataKaro", to: "/patakaro" },
     { label: "IntelliCode", to: "/intellicode" },
     { label: "CodeCast", to: "/codecast" },
+    { label: "Discussion", to: "/discussion" },
   ];
 
   return (

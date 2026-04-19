@@ -93,56 +93,54 @@ export default function CodeCast() {
       s.once('connect', () => resolve(s));
       s.once('connect_error', (err) => reject(err));
 
-    const s = socketRef.current;
+      s.on('room-joined', ({ role: r, room }) => {
+        setRole(r);
+        setRoomData(room);
+        if (room.status === 'active') {
+          startBattle(room);
+        } else {
+          setView('waiting');
+        }
+      });
 
-    s.on('room-joined', ({ role: r, room }) => {
-      setRole(r);
-      setRoomData(room);
-      if (room.status === 'active') {
+      s.on('opponent-joined', ({ displayName: n }) => {
+        setOpponentJoined(true);
+        addChat('🤖 System', `${n} joined the room`);
+      });
+
+      s.on('battle-start', ({ room }) => {
         startBattle(room);
-      } else {
-        setView('waiting');
-      }
-    });
+      });
 
-    s.on('opponent-joined', ({ displayName: n }) => {
-      setOpponentJoined(true);
-      addChat('🤖 System', `${n} joined the room`);
-    });
+      s.on('opponent-code', ({ code, language: lang }) => {
+        setOpponentCode(code);
+        setOpponentLang(lang);
+      });
 
-    s.on('battle-start', ({ room }) => {
-      startBattle(room);
-    });
+      s.on('player-submitted', ({ role: r, result }) => {
+        if (r !== role) {
+          setOpponentSubmitted(true);
+          addChat('🤖 System', `Opponent submitted — ${result.passed}/${result.total} passed`);
+        }
+      });
 
-    s.on('opponent-code', ({ code, language: lang }) => {
-      setOpponentCode(code);
-      setOpponentLang(lang);
-    });
+      s.on('battle-end', (result) => {
+        setBattleResult(result);
+        stopTimer();
+        setView('result');
+        sessionStorage.removeItem('cc_roomId');
+        sessionStorage.removeItem('cc_userId');
+        sessionStorage.removeItem('cc_displayName');
+      });
 
-    s.on('player-submitted', ({ role: r, result }) => {
-      if (r !== role) {
-        setOpponentSubmitted(true);
-        addChat('🤖 System', `Opponent submitted — ${result.passed}/${result.total} passed`);
-      }
-    });
+      s.on('chat', ({ displayName: n, message, ts }) => {
+        setChatMessages(prev => [...prev, { displayName: n, message, ts }]);
+      });
 
-    s.on('battle-end', (result) => {
-      setBattleResult(result);
-      stopTimer();
-      setView('result');
-      sessionStorage.removeItem('cc_roomId');
-      sessionStorage.removeItem('cc_userId');
-      sessionStorage.removeItem('cc_displayName');
-    });
-
-    s.on('chat', ({ displayName: n, message, ts }) => {
-      setChatMessages(prev => [...prev, { displayName: n, message, ts }]);
-    });
-
-    s.on('opponent-left', () => {
-      setOpponentLeft(true);
-      addChat('🤖 System', 'Opponent disconnected');
-    });
+      s.on('opponent-left', () => {
+        setOpponentLeft(true);
+        addChat('🤖 System', 'Opponent disconnected');
+      });
 
       s.on('error', ({ message: m }) => setError(m));
     }); // end Promise

@@ -89,10 +89,11 @@ export default function CodeCast() {
         transports: ['polling', 'websocket'],
         reconnectionAttempts: 5,
       });
-
       const s = socketRef.current;
       s.once('connect', () => resolve(s));
       s.once('connect_error', (err) => reject(err));
+
+    const s = socketRef.current;
 
     s.on('room-joined', ({ role: r, room }) => {
       setRole(r);
@@ -129,6 +130,9 @@ export default function CodeCast() {
       setBattleResult(result);
       stopTimer();
       setView('result');
+      sessionStorage.removeItem('cc_roomId');
+      sessionStorage.removeItem('cc_userId');
+      sessionStorage.removeItem('cc_displayName');
     });
 
     s.on('chat', ({ displayName: n, message, ts }) => {
@@ -178,6 +182,39 @@ export default function CodeCast() {
     stopTimer();
   }, []);
 
+  // Disable swipe navigation during battle
+  useEffect(() => {
+    if (view === 'battle') {
+      document.body.style.overscrollBehaviorX = 'none';
+      document.body.style.touchAction = 'pan-y';
+    } else {
+      document.body.style.overscrollBehaviorX = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overscrollBehaviorX = '';
+      document.body.style.touchAction = '';
+    };
+  }, [view]);
+
+  // Rejoin room on refresh if session exists
+  useEffect(() => {
+    const savedRoomId = sessionStorage.getItem('cc_roomId');
+    const savedUserId = sessionStorage.getItem('cc_userId');
+    const savedName   = sessionStorage.getItem('cc_displayName');
+    if (savedRoomId && savedUserId && user?.id === savedUserId) {
+      setRoomId(savedRoomId);
+      connectSocket().then((s) => {
+        s.emit('join-room', { roomId: savedRoomId, userId: savedUserId, displayName: savedName });
+      }).catch(() => {
+        sessionStorage.removeItem('cc_roomId');
+        sessionStorage.removeItem('cc_userId');
+        sessionStorage.removeItem('cc_displayName');
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   async function handleCreate() {
     setError('');
     setLoading(true);
@@ -187,16 +224,17 @@ export default function CodeCast() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionId: selectedQ.id, language, userId: user.id }),
       });
-
       if (!res.ok) {
         const txt = await res.text();
         let msg = `Server error (${res.status})`;
         try { msg = JSON.parse(txt).error || msg; } catch {}
         throw new Error(msg);
       }
-
       const { roomId: rid } = await res.json();
       setRoomId(rid);
+      sessionStorage.setItem('cc_roomId', rid);
+      sessionStorage.setItem('cc_userId', user.id);
+      sessionStorage.setItem('cc_displayName', displayName);
       await connectSocket();
       socketRef.current.emit('join-room', { roomId: rid, userId: user.id, displayName });
     } catch (e) {
@@ -216,6 +254,9 @@ export default function CodeCast() {
     setError('');
     setLoading(true);
     try {
+      sessionStorage.setItem('cc_roomId', rid);
+      sessionStorage.setItem('cc_userId', user.id);
+      sessionStorage.setItem('cc_displayName', displayName);
       await connectSocket();
       socketRef.current.emit('join-room', { roomId: rid, userId: user.id, displayName });
       setRoomId(rid);

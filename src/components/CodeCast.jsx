@@ -111,9 +111,15 @@ export default function CodeCast() {
           reconnectTimerRef.current = null;
           setOpponentReconnecting(false);
           setOpponentLeft(false);
+          // Remove the disconnect system messages from chat
+          setChatMessages(prev => prev.filter(m =>
+            !(m.displayName === '🤖 System' && m.message.includes('disconnected'))
+          ));
+          addChat('🤖 System', 'Opponent reconnected');
+        } else {
+          setOpponentJoined(true);
+          addChat('🤖 System', n ? `${n} joined the room` : 'Opponent joined');
         }
-        setOpponentJoined(true);
-        addChat('🤖 System', n ? `${n} joined the room` : 'Opponent reconnected');
       });
 
       s.on('battle-start', ({ room }) => {
@@ -139,6 +145,7 @@ export default function CodeCast() {
         sessionStorage.removeItem('cc_roomId');
         sessionStorage.removeItem('cc_userId');
         sessionStorage.removeItem('cc_displayName');
+        sessionStorage.removeItem('cc_startedAt');
       });
 
       s.on('chat', ({ displayName: n, message, ts }) => {
@@ -165,8 +172,10 @@ export default function CodeCast() {
     setChatMessages(prev => [...prev, { displayName: name, message: msg, ts: Date.now() }]);
   }
 
-  function startTimer() {
-    startTimeRef.current = Date.now();
+  function startTimer(startedAt = null) {
+    const t = startedAt || Date.now();
+    startTimeRef.current = t;
+    sessionStorage.setItem('cc_startedAt', String(t));
     timerRef.current = setInterval(() => {
       setElapsed(Date.now() - startTimeRef.current);
     }, 1000);
@@ -182,7 +191,10 @@ export default function CodeCast() {
     setLanguage(room.language || 'cpp');
     setMyCode(BOILERPLATE[room.language || 'cpp']);
     setOpponentJoined(true);
-    startTimer();
+    // Use saved start time if refreshed mid-battle
+    const savedStart = sessionStorage.getItem('cc_startedAt');
+    const startedAt = room.startedAt || (savedStart ? parseInt(savedStart) : null);
+    startTimer(startedAt);
     setView('battle');
   }
 
@@ -223,6 +235,7 @@ export default function CodeCast() {
         sessionStorage.removeItem('cc_roomId');
         sessionStorage.removeItem('cc_userId');
         sessionStorage.removeItem('cc_displayName');
+        sessionStorage.removeItem('cc_startedAt');
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

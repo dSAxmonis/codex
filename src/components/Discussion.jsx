@@ -39,7 +39,7 @@ const S = {
 };
 
 // ── Create Post Modal ─────────────────────────────────────────────────────────
-function CreatePostModal({ onClose, onCreated, token }) {
+function CreatePostModal({ onClose, onCreated, token, userId, userName }) {
   const [form, setForm] = useState({ title: '', content: '', company: '', role: '', difficulty: '', year: new Date().getFullYear(), tags: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,8 +50,8 @@ function CreatePostModal({ onClose, onCreated, token }) {
     try {
       const res = await fetch(`${API}/api/discussion`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...form, tags: form.tags.split(',').map(t => t.trim()).filter(Boolean) }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, userId, userName, tags: form.tags.split(',').map(t => t.trim()).filter(Boolean) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -129,7 +129,9 @@ function PostCard({ post, onClick, userId, token, onUpvote }) {
     if (!token) return;
     try {
       const res = await fetch(`${API}/api/discussion/${post._id}/upvote`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
       });
       const data = await res.json();
       onUpvote(post._id, data.upvotes, data.voted);
@@ -177,7 +179,7 @@ function PostCard({ post, onClick, userId, token, onUpvote }) {
 }
 
 // ── Post Detail View ──────────────────────────────────────────────────────────
-function PostDetail({ postId, onBack, userId, token }) {
+function PostDetail({ postId, onBack, userId, token, userName }) {
   const [post, setPost] = useState(null);
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(true);
@@ -191,7 +193,9 @@ function PostDetail({ postId, onBack, userId, token }) {
   async function handleUpvote() {
     if (!token) return;
     const res = await fetch(`${API}/api/discussion/${postId}/upvote`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
     });
     const data = await res.json();
     setPost(p => ({ ...p, upvotes: data.voted
@@ -206,8 +210,8 @@ function PostDetail({ postId, onBack, userId, token }) {
     try {
       const res = await fetch(`${API}/api/discussion/${postId}/comments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content: comment }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: comment, userId, userName }),
       });
       const data = await res.json();
       setPost(p => ({ ...p, comments: data.comments }));
@@ -219,7 +223,9 @@ function PostDetail({ postId, onBack, userId, token }) {
   async function handleCommentUpvote(commentId) {
     if (!token) return;
     const res = await fetch(`${API}/api/discussion/${postId}/comments/${commentId}/upvote`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
     });
     const data = await res.json();
     setPost(p => ({ ...p, comments: p.comments.map(c =>
@@ -413,7 +419,7 @@ export default function Discussion() {
         <Header />
         <div style={S.wrap}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 24 }}>
-            <PostDetail postId={selectedPost._id} onBack={() => setSelectedPost(null)} userId={user?.id} token={token} />
+            <PostDetail postId={selectedPost._id} onBack={() => setSelectedPost(null)} userId={user?.id} token={token} userName={user?.firstName || user?.fullName?.split(' ')[0] || 'Anonymous'} />
             <Leaderboard />
           </div>
         </div>
@@ -493,6 +499,8 @@ export default function Discussion() {
       {showCreate && (
         <CreatePostModal
           token={token}
+          userId={user?.id}
+          userName={user?.firstName || user?.fullName?.split(' ')[0] || 'Anonymous'}
           onClose={() => setShowCreate(false)}
           onCreated={handleCreated}
         />

@@ -78,6 +78,8 @@ export default function CodeCast() {
   const [opponentJoined, setOpponentJoined] = useState(false);
   const [opponentSubmitted, setOpponentSubmitted] = useState(false);
   const [opponentLeft, setOpponentLeft] = useState(false);
+  const [opponentReconnecting, setOpponentReconnecting] = useState(false);
+  const reconnectTimerRef = useRef(null);
 
   // Socket
   const socketRef = useRef(null);
@@ -104,8 +106,14 @@ export default function CodeCast() {
       });
 
       s.on('opponent-joined', ({ displayName: n }) => {
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+          setOpponentReconnecting(false);
+          setOpponentLeft(false);
+        }
         setOpponentJoined(true);
-        addChat('🤖 System', `${n} joined the room`);
+        addChat('🤖 System', n ? `${n} joined the room` : 'Opponent reconnected');
       });
 
       s.on('battle-start', ({ room }) => {
@@ -138,9 +146,16 @@ export default function CodeCast() {
       });
 
       s.on('opponent-left', () => {
-        setOpponentLeft(true);
-        addChat('🤖 System', 'Opponent disconnected');
+        setOpponentReconnecting(true);
+        addChat('🤖 System', 'Opponent disconnected — waiting for reconnect...');
+        reconnectTimerRef.current = setTimeout(() => {
+          setOpponentLeft(true);
+          setOpponentReconnecting(false);
+          addChat('🤖 System', 'Opponent left the battle');
+        }, 10000);
       });
+
+
 
       s.on('error', ({ message: m }) => setError(m));
     }); // end Promise
@@ -477,11 +492,13 @@ export default function CodeCast() {
             <span style={S.tag('#20c997')}>You ({role})</span>
             {opponentLeft
               ? <span style={S.tag('#ef4444')}>Opponent left</span>
-              : opponentSubmitted
-                ? <span style={S.tag('#f59e0b')}>Opponent submitted</span>
-                : opponentJoined
-                  ? <span style={S.tag('#6A6A6A')}>Opponent coding…</span>
-                  : <span style={S.tag('#6A6A6A')}>Waiting…</span>
+              : opponentReconnecting
+                ? <span style={S.tag('#f59e0b')}>Reconnecting…</span>
+                : opponentSubmitted
+                  ? <span style={S.tag('#f59e0b')}>Opponent submitted</span>
+                  : opponentJoined
+                    ? <span style={S.tag('#6A6A6A')}>Opponent coding…</span>
+                    : <span style={S.tag('#6A6A6A')}>Waiting…</span>
             }
           </div>
         </div>

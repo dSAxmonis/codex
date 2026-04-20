@@ -1118,7 +1118,7 @@ const Upsolve = () => {
     document.getElementById('main-content')?.classList.remove('blur-sm');
   };
 
-  const solutions = selectedQuestion.solution || [];
+  //const solutions = selectedQuestion.solution || [];
 
   // ── JSX — unchanged from your original ───────────────────────────────────
   const editorBg = editorTheme === 'vs-dark' ? '#1e1e1e' : '#ffffff';

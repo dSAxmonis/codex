@@ -39,6 +39,10 @@ Every year, thousands of NSUT & DTU students prepare for campus placements **com
 
 **Codify fixes all of this.**
 
+
+<img width="1262" height="976" alt="Screenshot 2026-04-23 at 6 49 35 AM" src="https://github.com/user-attachments/assets/328dcf6b-8517-4e07-93f5-1592645538f4" />
+
+
 ---
 
 ## ✨ Features
@@ -55,6 +59,8 @@ Browse 40+ companies that visit NSUT & DTU with:
 - Hiring timelines & OA patterns  
 - Location & backlog policies
 - Full interview experience threads
+- <img width="1269" height="982" alt="Screenshot 2026-04-23 at 6 51 13 AM" src="https://github.com/user-attachments/assets/18f9c5c2-1415-4971-b5f6-d64b67d75c75" />
+
 
 </td>
 <td width="50%">
@@ -67,6 +73,8 @@ Browse 40+ companies that visit NSUT & DTU with:
 - Monaco-based code editor (VS Code engine)
 - Live test case execution (C++, Python, Java)
 - AI-powered hints via Gemini
+- <img width="1213" height="979" alt="Screenshot 2026-04-23 at 6 51 41 AM" src="https://github.com/user-attachments/assets/7dac20d4-b32c-46f8-9066-5d1db5bd6c8d" />
+
 
 </td>
 </tr>
@@ -82,6 +90,8 @@ The most unique feature — real-time competitive coding:
 - Live code sync + battle chat
 - Winner decided by test cases passed
 - Session persists on page refresh
+-<img width="1072" height="855" alt="Screenshot 2026-04-23 at 6 52 07 AM" src="https://github.com/user-attachments/assets/8c4bca42-1091-4345-a558-d6898d8a5698" />
+
 
 </td>
 <td width="50%">
@@ -95,6 +105,8 @@ Students share OA experiences, juniors learn:
 - Points & badge system (Rookie → Legend)
 - Live leaderboard of top contributors
 - Filter by company, difficulty, year
+- <img width="1155" height="974" alt="Screenshot 2026-04-23 at 6 52 30 AM" src="https://github.com/user-attachments/assets/e7723a3c-9b22-4889-a82f-66df0ba9b7b5" />
+
 
 </td>
 </tr>
